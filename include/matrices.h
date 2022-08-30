@@ -8,25 +8,7 @@
 #include <glm/vec4.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-// Esta função Matrix() auxilia na criação de matrizes usando a biblioteca GLM.
-// Note que em OpenGL (e GLM) as matrizes são definidas como "column-major",
-// onde os elementos da matriz são armazenadas percorrendo as COLUNAS da mesma.
-// Por exemplo, seja
-//
-//       [a b c]
-//   M = [d e f]
-//       [g h i]
-//
-// uma matriz 3x3. Em memória, na representação "column-major" de OpenGL, essa
-// matriz é representada pelo seguinte array:
-//
-//   M[] = {  a,d,g,    b,e,h,    c,f,i  };
-//              ^         ^         ^
-//              |         |         |
-//           coluna 1  coluna 2  coluna 3
-//
-// Para conseguirmos definir matrizes através de suas LINHAS, a função Matrix()
-// computa a transposta usando os elementos passados por parâmetros.
+
 glm::mat4 Matrix(
     float m00, float m01, float m02, float m03, // LINHA 1
     float m10, float m11, float m12, float m13, // LINHA 2
@@ -283,87 +265,7 @@ glm::mat4 Matrix_Perspective(float field_of_view, float aspect, float n, float f
     // A matriz M é a mesma computada acima em Matrix_Orthographic().
     glm::mat4 M = Matrix_Orthographic(l, r, b, t, n, f);
 
-    // Note que as matrizes M*P e -M*P fazem exatamente a mesma projeção
-    // perspectiva, já que o sinal de negativo não irá afetar o resultado
-    // devido à divisão por w. Por exemplo, seja q = [qx,qy,qz,1] um ponto:
-    //
-    //      M*P*q = [ qx', qy', qz', w ]
-    //   =(div w)=> [ qx'/w, qy'/w, qz'/w, 1 ]   Eq. (*)
-    //
-    // agora com o sinal de negativo:
-    //
-    //     -M*P*q = [ -qx', -qy', -qz', -w ]
-    //   =(div w)=> [ -qx'/-w, -qy'/-w, -qz'/-w, -w/-w ]
-    //            = [ qx'/w, qy'/w, qz'/w, 1 ]   Eq. (**)
-    //
-    // Note que o ponto final, após divisão por w, é igual: Eq. (*) == Eq. (**).
-    //
-    // Então, por que utilizamos -M*P ao invés de M*P? Pois a especificação de
-    // OpenGL define que os pontos fora do cubo unitário NDC deverão ser
-    // descartados já que não irão aparecer na tela. O teste que define se um ponto
-    // q está dentro do cubo unitário NDC pode ser expresso como:
-    //
-    //      -1 <= qx'/w <= 1   &&  -1 <= qy'/w <= 1   &&  -1 <= qz'/w <= 1
-    //
-    // ou, de maneira equivalente SE w > 0, a placa de vídeo faz o seguinte teste
-    // ANTES da divisão por w:
-    //
-    //      -w <= qx' <= w   &&  -w <= qy' <= w   &&  -w <= qz' <= w
-    //
-    // Note que o teste acima economiza uma divisão por w caso o ponto seja
-    // descartado (quando esteja fora de NDC), entretanto, este último teste só
-    // é equivalente ao primeiro teste SE E SOMENTE SE w > 0 (isto é, se w for
-    // positivo). Como este último teste é o que a placa de vídeo (GPU) irá fazer,
-    // precisamos utilizar a matriz -M*P para projeção perspectiva, de forma que
-    // w seja positivo.
-    //
     return -M*P;
 }
 
-// Função que imprime uma matriz M no terminal
-void PrintMatrix(glm::mat4 M)
-{
-    printf("\n");
-    printf("[ %+0.2f  %+0.2f  %+0.2f  %+0.2f ]\n", M[0][0], M[1][0], M[2][0], M[3][0]);
-    printf("[ %+0.2f  %+0.2f  %+0.2f  %+0.2f ]\n", M[0][1], M[1][1], M[2][1], M[3][1]);
-    printf("[ %+0.2f  %+0.2f  %+0.2f  %+0.2f ]\n", M[0][2], M[1][2], M[2][2], M[3][2]);
-    printf("[ %+0.2f  %+0.2f  %+0.2f  %+0.2f ]\n", M[0][3], M[1][3], M[2][3], M[3][3]);
-}
-
-// Função que imprime um vetor v no terminal
-void PrintVector(glm::vec4 v)
-{
-    printf("\n");
-    printf("[ %+0.2f ]\n", v[0]);
-    printf("[ %+0.2f ]\n", v[1]);
-    printf("[ %+0.2f ]\n", v[2]);
-    printf("[ %+0.2f ]\n", v[3]);
-}
-
-// Função que imprime o produto de uma matriz por um vetor no terminal
-void PrintMatrixVectorProduct(glm::mat4 M, glm::vec4 v)
-{
-    auto r = M*v;
-    printf("\n");
-    printf("[ %+0.2f  %+0.2f  %+0.2f  %+0.2f ][ %+0.2f ]   [ %+0.2f ]\n", M[0][0], M[1][0], M[2][0], M[3][0], v[0], r[0]);
-    printf("[ %+0.2f  %+0.2f  %+0.2f  %+0.2f ][ %+0.2f ] = [ %+0.2f ]\n", M[0][1], M[1][1], M[2][1], M[3][1], v[1], r[1]);
-    printf("[ %+0.2f  %+0.2f  %+0.2f  %+0.2f ][ %+0.2f ]   [ %+0.2f ]\n", M[0][2], M[1][2], M[2][2], M[3][2], v[2], r[2]);
-    printf("[ %+0.2f  %+0.2f  %+0.2f  %+0.2f ][ %+0.2f ]   [ %+0.2f ]\n", M[0][3], M[1][3], M[2][3], M[3][3], v[3], r[3]);
-}
-
-// Função que imprime o produto de uma matriz por um vetor, junto com divisão
-// por w, no terminal.
-void PrintMatrixVectorProductDivW(glm::mat4 M, glm::vec4 v)
-{
-    auto r = M*v;
-    auto w = r[3];
-    printf("\n");
-    printf("[ %+0.2f  %+0.2f  %+0.2f  %+0.2f ][ %+0.2f ]   [ %+0.2f ]            [ %+0.2f ]\n", M[0][0], M[1][0], M[2][0], M[3][0], v[0], r[0], r[0]/w);
-    printf("[ %+0.2f  %+0.2f  %+0.2f  %+0.2f ][ %+0.2f ] = [ %+0.2f ] =(div w)=> [ %+0.2f ]\n", M[0][1], M[1][1], M[2][1], M[3][1], v[1], r[1], r[1]/w);
-    printf("[ %+0.2f  %+0.2f  %+0.2f  %+0.2f ][ %+0.2f ]   [ %+0.2f ]            [ %+0.2f ]\n", M[0][2], M[1][2], M[2][2], M[3][2], v[2], r[2], r[2]/w);
-    printf("[ %+0.2f  %+0.2f  %+0.2f  %+0.2f ][ %+0.2f ]   [ %+0.2f ]            [ %+0.2f ]\n", M[0][3], M[1][3], M[2][3], M[3][3], v[3], r[3], r[3]/w);
-}
-
-
-#endif // _MATRICES_H
-// vim: set spell spelllang=pt_br :
+#endif
