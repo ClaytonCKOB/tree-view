@@ -1,3 +1,7 @@
+#include "graphic.h"
+#include "tree.h"
+
+
 // Abaixo definimos variáveis globais utilizadas em várias funções do código.
 
 // A cena virtual é uma lista de objetos nomeados, guardados em um dicionário
@@ -44,7 +48,7 @@ bool g_UsePerspectiveProjection = true;
 
 
 int main(){
-    
+
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
     // sistema operacional, onde poderemos renderizar com OpenGL.
     int success = glfwInit();
