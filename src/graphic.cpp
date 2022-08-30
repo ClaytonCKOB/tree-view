@@ -1,3 +1,5 @@
+#include "graphic.h"
+
 
 // Função que pega a matriz M e guarda a mesma no topo da pilha
 void PushMatrix(glm::mat4 M)

@@ -1,3 +1,21 @@
+// #include <cmath>
+// #include <cstdio>
+// #include <cstdlib>
+
+// #include <map>
+// #include <stack>
+// #include <string>
+// #include <limits>
+// #include <fstream>
+// #include <sstream>
+
+// #include <glad/glad.h>   
+// #include <GLFW/glfw3.h>  
+
+// #include <glm/mat4x4.hpp>
+// #include <glm/vec4.hpp>
+// #include <glm/gtc/type_ptr.hpp>
+
 #include "graphic.h"
 #include "tree.h"
 
