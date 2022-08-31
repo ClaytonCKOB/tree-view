@@ -100,7 +100,7 @@ bool g_MiddleMouseButtonPressed = false; // Análogo para botão do meio do mous
 // renderização.
 float g_CameraTheta = 0.0f; // Ângulo no plano ZX em relação ao eixo Z
 float g_CameraPhi = 0.0f;   // Ângulo em relação ao eixo Y
-float g_CameraDistance = 3.5f; // Distância da câmera para a origem
+float g_CameraDistance = 6.5f; // Distância da câmera para a origem
 
 // Variáveis que controlam rotação do antebraço
 float g_ForearmAngleZ = 0.0f;
@@ -118,11 +118,15 @@ bool g_UsePerspectiveProjection = true;
 int main()
 {
     pNodoA *tree = NULL;
-    tree = InsereArvore(tree, 5);
-    tree = InsereArvore(tree, 1);
     tree = InsereArvore(tree, 6);
+    tree = InsereArvore(tree, 5);
     tree = InsereArvore(tree, 3);
     tree = InsereArvore(tree, 4);
+    tree = InsereArvore(tree, 2);
+    tree = InsereArvore(tree, 7);
+    tree = InsereArvore(tree, 9);
+    tree = InsereArvore(tree, 8);
+    tree = InsereArvore(tree, 10);
 
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
     // sistema operacional, onde poderemos renderizar com OpenGL.
@@ -410,12 +414,12 @@ int main()
         // g_VirtualScene["axes"] dentro da função BuildTriangles(), e veja
         // a documentação da função glDrawElements() em
         // http://docs.gl/gl3/glDrawElements.
-        glDrawElements(
-            g_VirtualScene["axes"].rendering_mode,
-            g_VirtualScene["axes"].num_indices,
-            GL_UNSIGNED_INT,
-            (void*)g_VirtualScene["axes"].first_index
-        );
+        // glDrawElements(
+        //     g_VirtualScene["axes"].rendering_mode,
+        //     g_VirtualScene["axes"].num_indices,
+        //     GL_UNSIGNED_INT,
+        //     (void*)g_VirtualScene["axes"].first_index
+        // );
 
         // "Desligamos" o VAO, evitando assim que operações posteriores venham a
         // alterar o mesmo. Isso evita bugs.
