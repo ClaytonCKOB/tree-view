@@ -114,19 +114,23 @@ float g_TorsoPositionY = 0.0f;
 bool g_UsePerspectiveProjection = true;
 
 // Variável que controla se o texto informativo será mostrado na tela.
+int digitos[2] = {}; //Limitar a dois digitos por conta do tamanho do nodo
+pNodoA *tree = NULL;
 
 int main()
 {
-    pNodoA *tree = NULL;
-    tree = InsereArvore(tree, 6);
-    tree = InsereArvore(tree, 5);
-    tree = InsereArvore(tree, 3);
-    tree = InsereArvore(tree, 4);
-    tree = InsereArvore(tree, 2);
-    tree = InsereArvore(tree, 7);
-    tree = InsereArvore(tree, 9);
-    tree = InsereArvore(tree, 8);
-    tree = InsereArvore(tree, 10);
+
+    // tree = InsereArvore(tree, 6);
+    // tree = InsereArvore(tree, 5);
+    // tree = InsereArvore(tree, 5);    
+    // tree = InsereArvore(tree, 3);
+    // tree = InsereArvore(tree, 4);
+    // tree = InsereArvore(tree, 2);
+    // tree = InsereArvore(tree, 7);
+    // tree = InsereArvore(tree, 6);
+    // tree = InsereArvore(tree, 9);
+    // tree = InsereArvore(tree, 8);
+    // tree = InsereArvore(tree, 10);
 
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
     // sistema operacional, onde poderemos renderizar com OpenGL.
@@ -194,29 +198,7 @@ int main()
 
     printf("GPU: %s, %s, OpenGL %s, GLSL %s\n", vendor, renderer, glversion, glslversion);
 
-    // Carregamos os shaders de vértices e de fragmentos que serão utilizados
-    // para renderização. Veja slides 180-200 do documento Aula_03_Rendering_Pipeline_Grafico.pdf.
-    //
-    // Note que o caminho para os arquivos "shader_vertex.glsl" e
-    // "shader_fragment.glsl" estão fixados, sendo que assumimos a existência
-    // da seguinte estrutura no sistema de arquivos:
-    //
-    //    + FCG_Lab_0X/
-    //    |
-    //    +--+ bin/
-    //    |  |
-    //    |  +--+ Release/  (ou Debug/ ou Linux/)
-    //    |     |
-    //    |     o-- main.exe
-    //    |
-    //    +--+ src/
-    //       |
-    //       o-- shader_vertex.glsl
-    //       |
-    //       o-- shader_fragment.glsl
-    //       |
-    //       o-- ...
-    //
+
     GLuint vertex_shader_id = LoadShader_Vertex("../../src/shader_vertex.glsl");
     GLuint fragment_shader_id = LoadShader_Fragment("../../src/shader_fragment.glsl");
 
@@ -329,66 +311,14 @@ int main()
         glUniformMatrix4fv(view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
         glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
 
-        // ##### TAREFAS DO LABORATÓRIO 3
-
-        // Cada cópia do cubo possui uma matriz de modelagem independente,
-        // já que cada cópia estará em uma posição (rotação, escala, ...)
-        // diferente em relação ao espaço global (World Coordinates). Veja
-        // slides 2-14 e 184-190 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
-        //
-        // Entretanto, neste laboratório as matrizes de modelagem dos cubos
-        // serão construídas de maneira hierárquica, tal que operações em
-        // alguns objetos influenciem outros objetos. Por exemplo: ao
-        // transladar o torso, a cabeça deve se movimentar junto.
-        // Veja slides 243-273 do documento Aula_08_Sistemas_de_Coordenadas.pdf
-        //
         glm::mat4 model = Matrix_Identity(); // Transformação inicial = identidade.
 
-        // Translação inicial do torso
         model = model * Matrix_Translate(0.0f, 0.0f, 0.0f);
         model = model * Matrix_Scale(0.5f, 0.5f, 0.5f);
-        // Guardamos matriz model atual na pilha
-        // PushMatrix(model);
-        //     // Atualizamos a matriz model (multiplicação à direita) para fazer um escalamento do torso
-        //     model = model * Matrix_Scale(0.5f, 0.5f, 1.0f);
-        //     // Enviamos a matriz "model" para a placa de vídeo (GPU). Veja o
-        //     // arquivo "shader_vertex.glsl", onde esta é efetivamente
-        //     // aplicada em todos os pontos.
-        //     glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        //     // Desenhamos um cubo. Esta renderização irá executar o Vertex
-        //     // Shader definido no arquivo "shader_vertex.glsl", e o mesmo irá
-        //     // utilizar as matrizes "model", "view" e "projection" definidas
-        //     // acima e já enviadas para a placa de vídeo (GPU).
-        //     DrawCube(render_as_black_uniform); // #### TORSO
-        // // Tiramos da pilha a matriz model guardada anteriormente
-        // PopMatrix(model);
 
-        renderTree(tree, tree->info, model, model_uniform, render_as_black_uniform);
-        // PushMatrix(model); // Guardamos matriz model atual na pilha
-        //     model = model * Matrix_Translate(-0.55f, 0.0f, 0.0f); // Atualizamos matriz model (multiplicação à direita) com uma translação para o braço direito
-        //     PushMatrix(model); // Guardamos matriz model atual na pilha
-        //         model = model // Atualizamos matriz model (multiplicação à direita) com a rotação do braço direito
-        //               * Matrix_Rotate_Z(g_AngleZ)  // TERCEIRO rotação Z de Euler
-        //               * Matrix_Rotate_Y(g_AngleY)  // SEGUNDO rotação Y de Euler
-        //               * Matrix_Rotate_X(g_AngleX); // PRIMEIRO rotação X de Euler
-        //         PushMatrix(model); // Guardamos matriz model atual na pilha
-        //             model = model * Matrix_Scale(0.2f, 0.6f, 0.2f); // Atualizamos matriz model (multiplicação à direita) com um escalamento do braço direito
-        //             glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model)); // Enviamos matriz model atual para a GPU
-        //             DrawCube(render_as_black_uniform); // #### BRAÇO DIREITO // Desenhamos o braço direito
-        //         PopMatrix(model); // Tiramos da pilha a matriz model guardada anteriormente
-        //         PushMatrix(model); // Guardamos matriz model atual na pilha
-        //             model = model * Matrix_Translate(0.0f, -0.65f, 0.0f); // Atualizamos matriz model (multiplicação à direita) com a translação do antebraço direito
-        //             model = model // Atualizamos matriz model (multiplicação à direita) com a rotação do antebraço direito
-        //                   * Matrix_Rotate_Z(g_ForearmAngleZ)  // SEGUNDO rotação Z de Euler
-        //                   * Matrix_Rotate_X(g_ForearmAngleX); // PRIMEIRO rotação X de Euler
-        //             PushMatrix(model); // Guardamos matriz model atual na pilha
-        //                 model = model * Matrix_Scale(0.2f, 0.6f, 0.2f); // Atualizamos matriz model (multiplicação à direita) com um escalamento do antebraço direito
-        //                 glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model)); // Enviamos matriz model atual para a GPU
-        //                 DrawCube(render_as_black_uniform); // #### ANTEBRAÇO DIREITO // Desenhamos o antebraço direito
-        //             PopMatrix(model); // Tiramos da pilha a matriz model guardada anteriormente
-        //         PopMatrix(model); // Tiramos da pilha a matriz model guardada anteriormente
-        //     PopMatrix(model); // Tiramos da pilha a matriz model guardada anteriormente
-        // PopMatrix(model); // Tiramos da pilha a matriz model guardada anteriormente
+        if (tree != NULL){
+            renderTree(tree, tree->info, model, model_uniform, render_as_black_uniform);
+        }
 
         // Neste ponto a matriz model recuperada é a matriz inicial (translação do torso)
 
@@ -652,14 +582,14 @@ GLuint BuildTriangles()
     GLfloat color_coefficients[] = {
     // Cores dos vértices do cubo
     //  R     G     B     A
-        1.0f, 0.5f, 0.0f, 1.0f, // cor do vértice 0
-        1.0f, 0.5f, 0.0f, 1.0f, // cor do vértice 1
-        0.0f, 0.5f, 1.0f, 1.0f, // cor do vértice 2
-        0.0f, 0.5f, 1.0f, 1.0f, // cor do vértice 3
-        1.0f, 0.5f, 0.0f, 1.0f, // cor do vértice 4
-        1.0f, 0.5f, 0.0f, 1.0f, // cor do vértice 5
-        0.0f, 0.5f, 1.0f, 1.0f, // cor do vértice 6
-        0.0f, 0.5f, 1.0f, 1.0f, // cor do vértice 7
+        0.3f, 0.1f, 0.0f, 1.0f, // cor do vértice 0
+        0.3f, 0.1f, 0.0f, 1.0f, // cor do vértice 1
+        0.3f, 0.1f, 0.0f, 1.0f, // cor do vértice 2
+        0.3f, 0.1f, 0.0f, 1.0f, // cor do vértice 3
+        0.3f, 0.1f, 0.0f, 1.0f, // cor do vértice 4
+        0.3f, 0.1f, 0.0f, 1.0f, // cor do vértice 5
+        0.3f, 0.1f, 0.0f, 1.0f, // cor do vértice 6
+        0.3f, 0.1f, 0.0f, 1.0f, // cor do vértice 7
     // Cores para desenhar o eixo X
         1.0f, 0.0f, 0.0f, 1.0f, // cor do vértice 8
         1.0f, 0.0f, 0.0f, 1.0f, // cor do vértice 9
@@ -1158,6 +1088,27 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
         g_UsePerspectiveProjection = false;
     }
 
+    if (key >= GLFW_KEY_0 && key <= GLFW_KEY_9){
+        if (digitos[0] == NULL){
+            digitos[0] = key;
+        }else if (digitos[1] == NULL){
+            digitos[1] = key;
+        }
+    }
+
+    if (key == GLFW_KEY_ENTER){
+        if (digitos[0] != NULL){
+            if (digitos[1] != NULL){
+                tree = InsereArvore(tree, digitos[1]*10 + digitos[0]);
+            }
+            else {
+                tree = InsereArvore(tree, digitos[0]);
+            }
+            digitos[0] = NULL;
+            digitos[1] = NULL;
+        }
+    }
+
 }
 
 void ErrorCallback(int error, const char* description)
@@ -1166,10 +1117,17 @@ void ErrorCallback(int error, const char* description)
 }
 
 void renderTree(pNodoA *a, int infoAnt, glm::mat4 model, GLint model_uniform, GLint render_as_black_uniform){
+    int extra = 0;
+
     if (a != NULL){
+        // Tentiva de evitar sobreposicao de blocos
+        if (a->esq != NULL && a->dir != NULL){
+            extra = 1.0f;
+        }
+
         if (a->info < infoAnt){
             PushMatrix(model);
-            model = model * Matrix_Translate(-1.3f, -1.3f, 0.0f);
+            model = model * Matrix_Translate(-1.3f - extra, -1.3f, 0.0f);
             glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
             DrawCube(render_as_black_uniform); 
         }else if (a->info == infoAnt){
@@ -1180,7 +1138,7 @@ void renderTree(pNodoA *a, int infoAnt, glm::mat4 model, GLint model_uniform, GL
         } 
         else {
             PushMatrix(model);
-            model = model * Matrix_Translate(1.3f, -1.3f, 0.0f);
+            model = model * Matrix_Translate(1.3f + extra, -1.3f, 0.0f);
             glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
             DrawCube(render_as_black_uniform); 
         }
