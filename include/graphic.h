@@ -16,6 +16,51 @@
 #include <glm/vec4.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+struct SceneObject
+{
+    const char*  name;        // Nome do objeto
+    void*        first_index; // Índice do primeiro vértice dentro do vetor indices[] definido em BuildTriangles()
+    int          num_indices; // Número de índices do objeto dentro do vetor indices[] definido em BuildTriangles()
+    GLenum       rendering_mode; // Modo de rasterização (GL_TRIANGLES, GL_TRIANGLE_STRIP, etc.)
+};
+
+std::map<const char*, SceneObject> g_VirtualScene;
+
+// Pilha que guardará as matrizes de modelagem.
+std::stack<glm::mat4>  g_MatrixStack;
+
+// Razão de proporção da janela (largura/altura). Veja função FramebufferSizeCallback().
+float g_ScreenRatio = 1.0f;
+
+// Ângulos de Euler que controlam a rotação de um dos cubos da cena virtual
+float g_AngleX = 0.0f;
+float g_AngleY = 0.0f;
+float g_AngleZ = 0.0f;
+
+// "g_LeftMouseButtonPressed = true" se o usuário está com o botão esquerdo do mouse
+// pressionado no momento atual. Veja função MouseButtonCallback().
+bool g_LeftMouseButtonPressed = false;
+bool g_RightMouseButtonPressed = false; // Análogo para botão direito do mouse
+bool g_MiddleMouseButtonPressed = false; // Análogo para botão do meio do mouse
+
+// Variáveis que definem a câmera em coordenadas esféricas, controladas pelo
+// usuário através do mouse (veja função CursorPosCallback()). A posição
+// efetiva da câmera é calculada dentro da função main(), dentro do loop de
+// renderização.
+float g_CameraTheta = 0.0f; // Ângulo no plano ZX em relação ao eixo Z
+float g_CameraPhi = 0.0f;   // Ângulo em relação ao eixo Y
+float g_CameraDistance = 3.5f; // Distância da câmera para a origem
+
+// Variáveis que controlam rotação do antebraço
+float g_ForearmAngleZ = 0.0f;
+float g_ForearmAngleX = 0.0f;
+
+// Variáveis que controlam translação do torso
+float g_TorsoPositionX = 0.0f;
+float g_TorsoPositionY = 0.0f;
+
+// Variável que controla o tipo de projeção utilizada: perspectiva ou ortográfica.
+bool g_UsePerspectiveProjection = true;
 
 
 void PushMatrix(glm::mat4 M);
@@ -37,13 +82,6 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
 
-struct SceneObject
-{
-    const char*  name;        // Nome do objeto
-    void*        first_index; // Índice do primeiro vértice dentro do vetor indices[] definido em BuildTriangles()
-    int          num_indices; // Número de índices do objeto dentro do vetor indices[] definido em BuildTriangles()
-    GLenum       rendering_mode; // Modo de rasterização (GL_TRIANGLES, GL_TRIANGLE_STRIP, etc.)
-};
 
 glm::mat4 Matrix(
     float m00, float m01, float m02, float m03, // LINHA 1
