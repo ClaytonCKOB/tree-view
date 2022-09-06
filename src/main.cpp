@@ -1175,10 +1175,13 @@ void ErrorCallback(int error, const char* description)
 {
     fprintf(stderr, "ERROR: GLFW: %s\n", description);
 }
+void drawText(pNodoA *a) {
+}
+void drawCircle(pNodoA *a){
+};
 
 void renderTree(pNodoA *a, int infoAnt, glm::mat4 model, GLint model_uniform, GLint render_as_black_uniform){
     int extra = 0;
-
     if (a != NULL){
         // Tentiva de evitar sobreposicao de blocos
         if (a->esq != NULL && a->dir != NULL){

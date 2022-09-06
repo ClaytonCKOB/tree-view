@@ -1,8 +1,11 @@
 
 struct TNodoA{
         int info;
+        double x;
+	    double y;
         struct TNodoA *esq;
         struct TNodoA *dir;
+
 };
 typedef struct TNodoA pNodoA;
 
@@ -37,5 +40,67 @@ pNodoA* consultaABP(pNodoA *a, int chave) {
                a = a->dir;
             }
             return NULL; 
+}
+
+pNodoA* minValor(pNodoA* node)
+{
+    struct TNodoA* current = node;
+  
+    /* loop down to find the leftmost leaf */
+    while (current && current->esq != NULL)
+        current = current->esq;
+  
+    return current;
+}
+  
+
+pNodoA* RemoveArvore(pNodoA *a, int ch)
+{
+      // base case
+    if (a == NULL)
+        return a;
+  
+    // If the ch to be deleted is 
+    // smaller than the a's
+    // ch, then it lies in esq subtree
+    if (ch < a->info)
+        a->esq = RemoveArvore(a->esq, ch);
+  
+    // If the ch to be deleted is
+    // greater than the a's
+    // ch, then it lies in dir subtree
+    else if (ch > a->info)
+        a->dir = RemoveArvore(a->dir, ch);
+  
+    // if ch is same as a's ch, then This is the node
+    // to be deleted
+    else {
+        // node has no child
+        if (a->esq==NULL and a->dir==NULL)
+            return NULL;
+        
+        // node with only one child or no child
+        else if (a->esq == NULL) {
+            struct TNodoA* temp = a->dir;
+            free(a);
+            return temp;
+        }
+        else if (a->dir == NULL) {
+            struct TNodoA* temp = a->esq;
+            free(a);
+            return temp;
+        }
+  
+        // node with two children: Get the inorder successor
+        // (smallest in the dir subtree)
+        struct TNodoA* temp = minValor(a->dir);
+  
+        // Copy the inorder successor's content to this node
+        a->info = temp->info;
+  
+        // Delete the inorder successor
+        a->dir = RemoveArvore(a->dir, temp->info);
+    }
+    return a;
 }
 
