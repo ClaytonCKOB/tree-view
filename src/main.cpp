@@ -19,6 +19,7 @@
 #include <limits>
 #include <fstream>
 #include <sstream>
+#include<iostream>
 
 // Headers das bibliotecas OpenGL
 #include <glad/glad.h>   // Criação de contexto OpenGL 3.3
@@ -39,7 +40,7 @@
 #include "utils.h"
 #include "matrices.h"
 #include "tree.h"
-
+using namespace std;
 
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
@@ -95,9 +96,9 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
-void renderTree(pNodoA *a, int infoAnt, glm::mat4 model, GLint model_uniform, GLint render_as_black_uniform);
-
-
+void renderTree(pNodoA *a, glm::mat4 model, GLint model_uniform, GLint render_as_black_uniform);
+void drawCircle(double x, double y, glm::mat4 model, GLint model_uniform);
+void updateAll(pNodoA* root);
 GLuint vertex_shader_id;
 GLuint fragment_shader_id;
 GLuint program_id = 0;
@@ -171,7 +172,15 @@ bool g_UsePerspectiveProjection = true;
 // Variável que controla se o texto informativo será mostrado na tela.
 int digitos[2] = {}; //Limitar a dois digitos por conta do tamanho do nodo
 pNodoA *tree = NULL;
-
+const double EP = 0.1;
+double nodeSpeed = .8;
+double nodeRadius;
+double nodeCurrentRadius = 40;
+string inputText;
+const double WINDOW_WIDTH = 1100.0;
+const double WINDOW_HEIGHT = 700.0;
+const double MAX_NODE_RADIUS = 80.0;
+const double MIN_NODE_RADIOUS = 40;
 int main()
 {
 
@@ -202,7 +211,7 @@ int main()
     // Criamos uma janela do sistema operacional, com 800 colunas e 800 linhas
     // de pixels, e com título "INF01047 ...".
     GLFWwindow* window;
-    window = glfwCreateWindow(800, 800, "INF01047 - Tree View", NULL, NULL);
+    window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "INF01047 - Tree View", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -224,7 +233,7 @@ int main()
     // redimensionada, por consequência alterando o tamanho do "framebuffer"
     // (região de memória onde são armazenados os pixels da imagem).
     glfwSetFramebufferSizeCallback(window, FramebufferSizeCallback);
-    glfwSetWindowSize(window, 800, 800); // Forçamos a chamada do callback acima, para definir g_ScreenRatio.
+    glfwSetWindowSize(window, WINDOW_WIDTH, WINDOW_HEIGHT); // Forçamos a chamada do callback acima, para definir g_ScreenRatio.
 
     // Indicamos que as chamadas OpenGL deverão renderizar nesta janela
     glfwMakeContextCurrent(window);
@@ -322,7 +331,6 @@ int main()
         glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
         glm::vec4 camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
         glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
-
         // Computamos a matriz "View" utilizando os parâmetros da câmera para
         // definir o sistema de coordenadas da câmera.  Veja slides 2-14, 184-190 e 236-242 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
         glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
@@ -368,9 +376,10 @@ int main()
         model = model * Matrix_Scale(0.25f, 0.25f, 0.25f);
 
         if (tree != NULL){
-            renderTree(tree, tree->info, model, model_uniform, render_as_black_uniform);
+            updateAll(tree);
+            renderTree(tree, model, model_uniform, render_as_black_uniform);
         }
-
+        
 
         // // Desenhamos o modelo da esfera
         // model = Matrix_Translate(-1.0f,0.0f,0.0f)
@@ -1147,25 +1156,46 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     {
         g_UsePerspectiveProjection = false;
     }
-
-    if (key >= GLFW_KEY_0 && key <= GLFW_KEY_9){
-        if (digitos[0] == NULL){
-            digitos[0] = key;
-        }else if (digitos[1] == NULL){
-            digitos[1] = key;
+    if (key >= GLFW_KEY_0 && key <= GLFW_KEY_9 && action == GLFW_PRESS){
+        switch(key){
+            case GLFW_KEY_0:
+                inputText += '0';
+                break;
+            case GLFW_KEY_1:
+                inputText += '1';
+                break;
+            case GLFW_KEY_2:
+                inputText += '2';
+                break;
+            case GLFW_KEY_3:
+                inputText += '3';
+                break;
+            case GLFW_KEY_4:
+                inputText += '4';
+                break;
+            case GLFW_KEY_5:
+                inputText += '5';
+                break;
+            case GLFW_KEY_6:
+                inputText += '6';
+                break;
+            case GLFW_KEY_7:
+                inputText += '7';
+                break;
+            case GLFW_KEY_8:
+                inputText += '8';
+                break;
+            case GLFW_KEY_9:
+                inputText += '9';
+                break;
         }
     }
 
     if (key == GLFW_KEY_ENTER){
-        if (digitos[0] != NULL){
-            if (digitos[1] != NULL){
-                tree = InsereArvore(tree, digitos[1]*10 + digitos[0]);
-            }
-            else {
-                tree = InsereArvore(tree, digitos[0]);
-            }
-            digitos[0] = NULL;
-            digitos[1] = NULL;
+        if (inputText !=  ""){
+            int b = atoi(inputText.c_str());
+            tree = InsereArvore(tree, b);
+            inputText = "";
         }
     }
 
@@ -1175,43 +1205,129 @@ void ErrorCallback(int error, const char* description)
 {
     fprintf(stderr, "ERROR: GLFW: %s\n", description);
 }
-void drawText(pNodoA *a) {
+bool goToPos(pNodoA *a) {
+	
+	double y1 = a->currY;
+	double x1 = a->currX;
+	double dy = (a->y - a->currY);
+	double dx = (a->x - a->currX);
+	double slope = dy / dx;
+
+	if (abs(dy) > nodeSpeed || abs(dx) > nodeSpeed) {
+		if (abs(dy) > abs(dx)) {
+
+			if (a->y > a->currY)
+				a->currY += nodeSpeed;
+			else
+				a->currY -= nodeSpeed;
+
+			if (slope == 0) {
+				a->currX += nodeSpeed;
+			}
+			else
+				a->currX = (a->currY + slope * x1 - y1) / slope;
+
+			if (abs(slope) < EP) {
+				if (a->x > a->currX)
+					a->currX += nodeSpeed;
+				else
+					a->currX -= nodeSpeed;
+			}
+			else {
+				a->currX = (a->currY + slope * x1 - y1) / slope;
+			}
+
+		}
+		else {
+			if (a->x > a->currX)
+				a->currX += nodeSpeed;
+			else
+				a->currX -= nodeSpeed;
+
+			if (abs(slope) < EP) {
+				if(a->y > a->currY)
+					a->currY += nodeSpeed;
+				else
+					a->currY -= nodeSpeed;
+			}
+			else {
+				a->currY = (slope* a->currX - slope * x1 + y1);
+			}
+		}
+		return false;
+	}
+	else {
+		return true;
+	}
+		
 }
-void drawCircle(pNodoA *a){
+
+void updatePositions(pNodoA  * currNode, int level, int col, double levelHeight) {
+	if (!currNode) return;
+
+	currNode->level = level;
+	currNode->col = col;
+
+    /*cout << "update\n";
+	cout << "node date = " << currNode->info << endl;
+    cout << "currNode->level" << currNode->level << endl;
+	cout << "currNode->x" << currNode->x << endl;
+	cout << "currNode->y" << currNode->y << endl;
+	cout << "currNode->currX" << currNode->currX << endl;
+	cout << "currNode->currY" << currNode->currY << endl;
+    */
+	int absCol = col - pow(2, level - 1) + 1;
+
+	double ww = (WINDOW_WIDTH / pow(2, level - 1));
+
+	currNode->x = ww * (absCol - 1) + ww / 2;
+
+
+	currNode->y = WINDOW_HEIGHT - (level*levelHeight - levelHeight / 2);
+	/*cout << "after\n";
+	cout << "currNode->x" << currNode->x << endl;
+	cout << "currNode->y" << currNode->y << endl;
+	cout << "currNode->currX" << currNode->currX << endl;
+	cout << "currNode->currY" << currNode->currY << endl;
+
+	cout << "\n";
+    */
+	updatePositions(currNode->esq, level + 1, col << 1, levelHeight);
+	updatePositions(currNode->dir, level + 1, (col << 1)|1, levelHeight);
+}
+void drawNode(pNodoA *a, glm::mat4 model, GLint model_uniform){
+    a->emPosicao = goToPos(a);
+
+	//galho();
+	drawCircle(a->currX, a->currY, model, model_uniform);
+	//drawText();
+};
+void drawCircle(double x, double y, glm::mat4 model, GLint model_uniform){
+    PushMatrix(model);
+    model = model * Matrix_Translate(x/100, y/100, 0.0f);
+    glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+    glUniform1i(object_id_uniform, SPHERE);
+    DrawVirtualObject("sphere");
+    PopMatrix(model);
 };
 
-void renderTree(pNodoA *a, int infoAnt, glm::mat4 model, GLint model_uniform, GLint render_as_black_uniform){
-    int extra = 0;
-    if (a != NULL){
-        // Tentiva de evitar sobreposicao de blocos
-        if (a->esq != NULL && a->dir != NULL){
-            extra = 1.0f;
-        }
+void renderTree(pNodoA *a, glm::mat4 model, GLint model_uniform, GLint render_as_black_uniform){
+    if (!a) return;
+    // Tentiva de evitar sobreposicao de blocos
+    drawNode(a, model, model_uniform);
+    renderTree(a->esq, model, model_uniform, render_as_black_uniform);
+    renderTree(a->dir, model, model_uniform, render_as_black_uniform);
+}
 
-        if (a->info < infoAnt){
-            PushMatrix(model);
-            model = model * Matrix_Translate(-2.3f - extra, -2.3f, 0.0f);
-            glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-            glUniform1i(object_id_uniform, SPHERE);
-            DrawVirtualObject("sphere");
-        }else if (a->info == infoAnt){
-            PushMatrix(model);
-            model = model * Matrix_Translate(0.0f, 0.0f, 0.0f);
-            glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-            glUniform1i(object_id_uniform, SPHERE);
-            DrawVirtualObject("sphere");
-        } 
-        else {
-            PushMatrix(model);
-            model = model * Matrix_Translate(2.3f + extra, -2.3f, 0.0f);
-            glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-            glUniform1i(object_id_uniform, SPHERE);
-            DrawVirtualObject("sphere");
-        }
-        renderTree(a->esq, a->info, model, model_uniform, render_as_black_uniform);
-        renderTree(a->dir, a->info, model, model_uniform, render_as_black_uniform);
-        PopMatrix(model);
-    }
+void updateAll(pNodoA* root){
+    int levels = getLevel(root);
+    double levelHeight = WINDOW_HEIGHT / levels;
+    updatePositions(root,1,1, levelHeight);
+    nodeRadius = min(
+		min(((WINDOW_WIDTH / pow(2, levels)*1.0) / 2)*0.8, ((WINDOW_HEIGHT / levels) / 2)*0.8)
+		, MAX_NODE_RADIUS);
+	nodeRadius = max(nodeRadius, MIN_NODE_RADIOUS);
+
 }
 
 void ComputeNormals(ObjModel* model)
