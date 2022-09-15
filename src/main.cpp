@@ -96,8 +96,10 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
+void drawNumber(int num, double desX,glm::mat4 model, GLint model_uniform);
+void drawNodeValue(int num, glm::mat4 model, GLint model_uniform);
 void renderTree(pNodoA *a, glm::mat4 model, GLint model_uniform, GLint render_as_black_uniform);
-void drawCircle(double x, double y, glm::mat4 model, GLint model_uniform);
+void drawCircle(double x, double y, glm::mat4 model, GLint model_uniform, int num);
 void updateAll(pNodoA* root);
 GLuint vertex_shader_id;
 GLuint fragment_shader_id;
@@ -285,10 +287,57 @@ int main()
     #define SPHERE 0
     #define BUNNY  1
     #define PLANE  2
+    #define LEAF   3
+    #define EIGHT  8
 
     ObjModel spheremodel("../../obj/sphere.obj");
     ComputeNormals(&spheremodel);
     BuildTrianglesAndAddToVirtualScene(&spheremodel);
+
+    ObjModel leafmodel("../../obj/leaf.obj");
+    ComputeNormals(&leafmodel);
+    BuildTrianglesAndAddToVirtualScene(&leafmodel);
+
+    // Carregando numeros
+    ObjModel zeromodel("../../obj/zero.obj");
+    ComputeNormals(&zeromodel);
+    BuildTrianglesAndAddToVirtualScene(&zeromodel);
+
+    ObjModel onemodel("../../obj/one.obj");
+    ComputeNormals(&onemodel);
+    BuildTrianglesAndAddToVirtualScene(&onemodel);
+
+    ObjModel twomodel("../../obj/two.obj");
+    ComputeNormals(&twomodel);
+    BuildTrianglesAndAddToVirtualScene(&twomodel);
+
+    ObjModel threemodel("../../obj/three.obj");
+    ComputeNormals(&threemodel);
+    BuildTrianglesAndAddToVirtualScene(&threemodel);
+
+    ObjModel fourmodel("../../obj/four.obj");
+    ComputeNormals(&fourmodel);
+    BuildTrianglesAndAddToVirtualScene(&fourmodel);
+
+    ObjModel fivemodel("../../obj/five.obj");
+    ComputeNormals(&fivemodel);
+    BuildTrianglesAndAddToVirtualScene(&fivemodel);
+
+    ObjModel sixmodel("../../obj/six.obj");
+    ComputeNormals(&sixmodel);
+    BuildTrianglesAndAddToVirtualScene(&sixmodel);
+
+    ObjModel sevenmodel("../../obj/seven.obj");
+    ComputeNormals(&sevenmodel);
+    BuildTrianglesAndAddToVirtualScene(&sevenmodel);
+
+    ObjModel eightmodel("../../obj/eight.obj");
+    ComputeNormals(&eightmodel);
+    BuildTrianglesAndAddToVirtualScene(&eightmodel);
+
+    ObjModel ninemodel("../../obj/nine.obj");
+    ComputeNormals(&ninemodel);
+    BuildTrianglesAndAddToVirtualScene(&ninemodel);
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
@@ -379,7 +428,6 @@ int main()
             updateAll(tree);
             renderTree(tree, model, model_uniform, render_as_black_uniform);
         }
-        
 
         // // Desenhamos o modelo da esfera
         // model = Matrix_Translate(-1.0f,0.0f,0.0f)
@@ -1299,17 +1347,40 @@ void drawNode(pNodoA *a, glm::mat4 model, GLint model_uniform){
     a->emPosicao = goToPos(a);
 
 	//galho();
-	drawCircle(a->currX, a->currY, model, model_uniform);
+	drawCircle(a->currX, a->currY, model, model_uniform, a->info);
 	//drawText();
 };
-void drawCircle(double x, double y, glm::mat4 model, GLint model_uniform){
+void drawCircle(double x, double y, glm::mat4 model, GLint model_uniform, int num){
     PushMatrix(model);
     model = model * Matrix_Translate(x/100, y/100, 0.0f);
     glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
     glUniform1i(object_id_uniform, SPHERE);
     DrawVirtualObject("sphere");
+    drawNodeValue(num, model, model_uniform);
     PopMatrix(model);
 };
+
+void drawNodeValue(int num, glm::mat4 model, GLint model_uniform){
+
+    if (num < 10){
+        drawNumber(num, 0.0f,model, model_uniform);
+    } else{
+        int secondDigit = num/10;
+        int firstDigit = num - secondDigit * 10;
+        drawNumber(secondDigit, -0.4f,model, model_uniform);
+        drawNumber(firstDigit, 0.4f, model, model_uniform);
+    }
+}
+
+void drawNumber(int num, double desX,glm::mat4 model, GLint model_uniform){
+    char *filenames[10] = {"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"};
+    model = model * Matrix_Translate(desX, 0.0f, 1.2f)
+                  * Matrix_Rotate_X(-90)
+                  * Matrix_Scale(0.09f, 0.09f, 0.09f);
+    glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+    glUniform1i(object_id_uniform, 0);
+    DrawVirtualObject(filenames[num]);
+}
 
 void renderTree(pNodoA *a, glm::mat4 model, GLint model_uniform, GLint render_as_black_uniform){
     if (!a) return;
@@ -1474,7 +1545,7 @@ void BuildTrianglesAndAddToVirtualScene(ObjModel* model)
         theobject.num_indices    = last_index - first_index + 1; // Número de indices
         theobject.rendering_mode = GL_TRIANGLES;       // Índices correspondem ao tipo de rasterização GL_TRIANGLES.
         theobject.vertex_array_object_id = vertex_array_object_id;
-
+        printf("%s\n", theobject.name.c_str());
         theobject.bbox_min = bbox_min;
         theobject.bbox_max = bbox_max;
 
