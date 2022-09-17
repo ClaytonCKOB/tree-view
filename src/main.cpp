@@ -175,12 +175,14 @@ bool g_UsePerspectiveProjection = true;
 int digitos[2] = {}; //Limitar a dois digitos por conta do tamanho do nodo
 pNodoA *tree = NULL;
 const double EP = 0.1;
-double nodeSpeed = .8;
+double nodeSpeed = 2.0;
 double nodeRadius;
+double nodeRadiusStep = .2;
 double nodeCurrentRadius = 40;
 string inputText;
 const double WINDOW_WIDTH = 1100.0;
 const double WINDOW_HEIGHT = 700.0;
+const double LIMIT_TREE = 100;
 const double MAX_NODE_RADIUS = 80.0;
 const double MIN_NODE_RADIOUS = 40;
 int main()
@@ -338,6 +340,10 @@ int main()
     ObjModel ninemodel("../../obj/nine.obj");
     ComputeNormals(&ninemodel);
     BuildTrianglesAndAddToVirtualScene(&ninemodel);
+    
+    ObjModel plane("../../obj/plane.obj");
+    ComputeNormals(&plane);
+    BuildTrianglesAndAddToVirtualScene(&plane);
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
@@ -421,8 +427,15 @@ int main()
 
         glm::mat4 model = Matrix_Identity(); // Transformação inicial = identidade.
 
+        model = Matrix_Translate(20.0f,-5.0f,0.0f)
+              * Matrix_Scale(40.0f, 5.0f, 20.0f);
+        glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+        glUniform1i(object_id_uniform, PLANE);
+        DrawVirtualObject("plane");
+
+        model = Matrix_Identity();
         model = model * Matrix_Translate(0.0f, 0.0f, 0.0f);
-        model = model * Matrix_Scale(0.25f, 0.25f, 0.25f);
+        model = model * Matrix_Scale(1.0f, 1.0f, 1.0f);
 
         if (tree != NULL){
             updateAll(tree);
@@ -1242,7 +1255,9 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     if (key == GLFW_KEY_ENTER){
         if (inputText !=  ""){
             int b = atoi(inputText.c_str());
-            tree = InsereArvore(tree, b);
+            if(b <100){
+                tree = InsereArvore(tree, b);
+            }
             inputText = "";
         }
     }
@@ -1326,20 +1341,19 @@ void updatePositions(pNodoA  * currNode, int level, int col, double levelHeight)
     */
 	int absCol = col - pow(2, level - 1) + 1;
 
-	double ww = (WINDOW_WIDTH / pow(2, level - 1));
+	double ww = ((WINDOW_WIDTH) / pow(2, level - 1));
 
 	currNode->x = ww * (absCol - 1) + ww / 2;
 
 
 	currNode->y = WINDOW_HEIGHT - (level*levelHeight - levelHeight / 2);
-	/*cout << "after\n";
+	cout << "after\n";
 	cout << "currNode->x" << currNode->x << endl;
 	cout << "currNode->y" << currNode->y << endl;
 	cout << "currNode->currX" << currNode->currX << endl;
 	cout << "currNode->currY" << currNode->currY << endl;
-
 	cout << "\n";
-    */
+    
 	updatePositions(currNode->esq, level + 1, col << 1, levelHeight);
 	updatePositions(currNode->dir, level + 1, (col << 1)|1, levelHeight);
 }
@@ -1348,11 +1362,10 @@ void drawNode(pNodoA *a, glm::mat4 model, GLint model_uniform){
 
 	//galho();
 	drawCircle(a->currX, a->currY, model, model_uniform, a->info);
-	//drawText();
 };
 void drawCircle(double x, double y, glm::mat4 model, GLint model_uniform, int num){
     PushMatrix(model);
-    model = model * Matrix_Translate(x/100, y/100, 0.0f);
+    model = model * Matrix_Translate((x-550)/100,(y-350)/100, 0.0f) * Matrix_Scale(nodeCurrentRadius/150, nodeCurrentRadius/150, nodeCurrentRadius/150);
     glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
     glUniform1i(object_id_uniform, SPHERE);
     DrawVirtualObject("sphere");
@@ -1399,6 +1412,12 @@ void updateAll(pNodoA* root){
 		, MAX_NODE_RADIUS);
 	nodeRadius = max(nodeRadius, MIN_NODE_RADIOUS);
 
+    if (abs(nodeRadius - nodeCurrentRadius) > nodeRadiusStep) {
+		if (nodeRadius > nodeCurrentRadius)
+			nodeCurrentRadius += nodeRadiusStep;
+		else
+			nodeCurrentRadius -= nodeRadiusStep;
+	}
 }
 
 void ComputeNormals(ObjModel* model)
