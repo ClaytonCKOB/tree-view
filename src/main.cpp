@@ -146,6 +146,8 @@ float g_AngleX = 0.0f;
 float g_AngleY = 0.0f;
 float g_AngleZ = 0.0f;
 
+double g_LastCursorPosX, g_LastCursorPosY;
+
 // "g_LeftMouseButtonPressed = true" se o usuário está com o botão esquerdo do mouse
 // pressionado no momento atual. Veja função MouseButtonCallback().
 bool g_LeftMouseButtonPressed = false;
@@ -440,6 +442,9 @@ int main()
         if (tree != NULL){
             updateAll(tree);
             renderTree(tree, model, model_uniform, render_as_black_uniform);
+            if(g_LeftMouseButtonPressed){
+                cout << "x = " << g_LastCursorPosX << endl;
+            }
         }
 
         // // Desenhamos o modelo da esfera
@@ -1014,7 +1019,6 @@ void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
 // Variáveis globais que armazenam a última posição do cursor do mouse, para
 // que possamos calcular quanto que o mouse se movimentou entre dois instantes
 // de tempo. Utilizadas no callback CursorPosCallback() abaixo.
-double g_LastCursorPosX, g_LastCursorPosY;
 
 // Função callback chamada sempre que o usuário aperta algum dos botões do mouse
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)

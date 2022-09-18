@@ -10,8 +10,8 @@ pNodoA* InsereArvore(pNodoA *a, int ch)
          a->info = ch;
          a->esq = NULL;
          a->dir = NULL;
-         a->currX = -800;
-         a->currY = -800;
+         a->currX = 0;
+         a->currY = 0;
          return a;
      }
      else
@@ -47,7 +47,6 @@ pNodoA* minValor(pNodoA* node)
   
     return current;
 }
-  
 
 pNodoA* RemoveArvore(pNodoA *a, int ch)
 {
