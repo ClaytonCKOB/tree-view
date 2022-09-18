@@ -126,7 +126,19 @@ struct SceneObject
     glm::vec3    bbox_max;
 };
 
+typedef struct
+{
+    float pos_x;
+    float pos_y;
+    float pos_z;
+    float velocidade; // Velocidade pertentencente a [1, 3]
+    bool na_tela;
+} BULLET;
 
+int bulletLimit(BULLET tiro);
+void bulletsHit ();
+void drawBullets(glm::mat4 model, GLint model_uniform, GLint render_as_black_uniform);
+void createBullet();
 // Abaixo definimos variáveis globais utilizadas em várias funções do código.
 
 // A cena virtual é uma lista de objetos nomeados, guardados em um dicionário
@@ -187,6 +199,17 @@ const double WINDOW_HEIGHT = 700.0;
 const double LIMIT_TREE = 100;
 const double MAX_NODE_RADIUS = 80.0;
 const double MIN_NODE_RADIOUS = 40;
+
+#define N_TIRO 1
+
+// Variáveis da câmera Free Camera
+glm::vec4 camera_position_c = glm::vec4(0,0, 9.0f,1.0f);
+glm::vec4 camera_view_vector;
+glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f);
+glm::vec4 w;
+glm::vec4 u;                //W  S  D  A
+int camera_movement_keys[] = {0, 0, 0, 0};
+BULLET tiro[N_TIRO];
 int main()
 {
 
@@ -378,19 +401,41 @@ int main()
         // controladas pelo mouse do usuário. Veja as funções CursorPosCallback()
         // e ScrollCallback().
         float r = g_CameraDistance;
-        float y = r*sin(g_CameraPhi);
-        float z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
-        float x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
+        float y = sin(g_CameraPhi);
+        float z = -1 *cos(g_CameraPhi)*cos(g_CameraTheta);
+        float x = cos(g_CameraPhi)*sin(g_CameraTheta);
+
 
         // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
         // Veja slides 195-227 e 229-234 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
-        glm::vec4 camera_position_c  = glm::vec4(x,y,z,1.0f); // Ponto "c", centro da câmera
-        glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
-        glm::vec4 camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
-        glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
+        camera_view_vector = glm::vec4(x,y,z,0.0f); // Vetor "view", sentido para onde a câmera está virada
+        w = -camera_view_vector/norm(camera_view_vector);
+        u = crossproduct(camera_up_vector, w)/norm(crossproduct(camera_up_vector, w));
+
         // Computamos a matriz "View" utilizando os parâmetros da câmera para
         // definir o sistema de coordenadas da câmera.  Veja slides 2-14, 184-190 e 236-242 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
         glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
+
+        // Se a tecla W está sendo pressionada (camera_movement_keys[0] = true), movimentamos a câmera para frente.
+        if (camera_movement_keys[0])
+        {
+            camera_position_c -= (w * 0.01f);
+        }
+        // Se a tecla S está sendo pressionada (camera_movement_keys[1] = true), movimentamos a câmera para trás.
+        if (camera_movement_keys[1])
+        {
+            camera_position_c += (w * 0.01f);
+        }
+        // Se a tecla D está sendo pressionada (camera_movement_keys[2] = true), movimentamos a câmera para a direita.
+        if (camera_movement_keys[2])
+        {
+            camera_position_c += (u * 0.01f);
+        }
+        // Se a tecla A está sendo pressionada (camera_movement_keys[3] = true), movimentamos a câmera para a esquerda.
+        if (camera_movement_keys[3])
+        {
+            camera_position_c -= (u * 0.01f);
+        }
 
         // Agora computamos a matriz de Projeção.
         glm::mat4 projection;
@@ -442,10 +487,9 @@ int main()
         if (tree != NULL){
             updateAll(tree);
             renderTree(tree, model, model_uniform, render_as_black_uniform);
-            if(g_LeftMouseButtonPressed){
-                cout << "x = " << g_LastCursorPosX << endl;
-            }
         }
+        drawBullets(model, model_uniform, render_as_black_uniform);
+        bulletsHit();
 
         // // Desenhamos o modelo da esfera
         // model = Matrix_Translate(-1.0f,0.0f,0.0f)
@@ -517,6 +561,481 @@ int main()
 
     // Fim do programa
     return 0;
+}
+
+bool goToPos(pNodoA *a) {
+	
+	double y1 = a->currY;
+	double x1 = a->currX;
+	double dy = (a->y - a->currY);
+	double dx = (a->x - a->currX);
+	double slope = dy / dx;
+
+	if (abs(dy) > nodeSpeed || abs(dx) > nodeSpeed) {
+		if (abs(dy) > abs(dx)) {
+
+			if (a->y > a->currY)
+				a->currY += nodeSpeed;
+			else
+				a->currY -= nodeSpeed;
+
+			if (slope == 0) {
+				a->currX += nodeSpeed;
+			}
+			else
+				a->currX = (a->currY + slope * x1 - y1) / slope;
+
+			if (abs(slope) < EP) {
+				if (a->x > a->currX)
+					a->currX += nodeSpeed;
+				else
+					a->currX -= nodeSpeed;
+			}
+			else {
+				a->currX = (a->currY + slope * x1 - y1) / slope;
+			}
+
+		}
+		else {
+			if (a->x > a->currX)
+				a->currX += nodeSpeed;
+			else
+				a->currX -= nodeSpeed;
+
+			if (abs(slope) < EP) {
+				if(a->y > a->currY)
+					a->currY += nodeSpeed;
+				else
+					a->currY -= nodeSpeed;
+			}
+			else {
+				a->currY = (slope* a->currX - slope * x1 + y1);
+			}
+		}
+		return false;
+	}
+	else {
+		return true;
+	}
+		
+}
+
+void updatePositions(pNodoA  * currNode, int level, int col, double levelHeight) {
+	if (!currNode) return;
+
+	currNode->level = level;
+	currNode->col = col;
+
+    /*cout << "update\n";
+	cout << "node date = " << currNode->info << endl;
+    cout << "currNode->level" << currNode->level << endl;
+	cout << "currNode->x" << currNode->x << endl;
+	cout << "currNode->y" << currNode->y << endl;
+	cout << "currNode->currX" << currNode->currX << endl;
+	cout << "currNode->currY" << currNode->currY << endl;
+    */
+	int absCol = col - pow(2, level - 1) + 1;
+
+	double ww = ((WINDOW_WIDTH) / pow(2, level - 1));
+    if (ww < 1){
+        ww = 1.0;
+    }
+
+	currNode->x = ww * (absCol - 1) + ww / 2;
+
+
+	currNode->y = WINDOW_HEIGHT - (level*levelHeight - levelHeight / 2);
+	/*cout << "after\n";
+	cout << "node date = " << currNode->info << endl;
+    cout << "currNode->level" << currNode->level << endl;
+	cout << "currNode->x" << currNode->x << endl;
+	cout << "currNode->y" << currNode->y << endl;
+	cout << "currNode->currX" << currNode->currX << endl;
+	cout << "currNode->currY" << currNode->currY << endl;
+    */
+    
+	updatePositions(currNode->esq, level + 1, col << 1, levelHeight);
+	updatePositions(currNode->dir, level + 1, (col << 1)|1, levelHeight);
+}
+void drawNode(pNodoA *a, glm::mat4 model, GLint model_uniform){
+    a->emPosicao = goToPos(a);
+
+	//galho();
+	drawCircle(a->currX, a->currY, model, model_uniform, a->info);
+};
+void drawCircle(double x, double y, glm::mat4 model, GLint model_uniform, int num){
+    PushMatrix(model);
+    model = model * Matrix_Translate((x-WINDOW_WIDTH/2)/100,(y-WINDOW_HEIGHT/2)/100, 0.0f) * Matrix_Scale(nodeCurrentRadius/150, nodeCurrentRadius/150, nodeCurrentRadius/150);
+    glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+    glUniform1i(object_id_uniform, SPHERE);
+    DrawVirtualObject("sphere");
+    drawNodeValue(num, model, model_uniform);
+    PopMatrix(model);
+};
+
+void drawNodeValue(int num, glm::mat4 model, GLint model_uniform){
+
+    if (num < 10){
+        drawNumber(num, 0.0f,model, model_uniform);
+    } else{
+        int secondDigit = num/10;
+        int firstDigit = num - secondDigit * 10;
+        drawNumber(secondDigit, -0.4f,model, model_uniform);
+        drawNumber(firstDigit, 0.4f, model, model_uniform);
+    }
+}
+
+void drawNumber(int num, double desX,glm::mat4 model, GLint model_uniform){
+    char *filenames[10] = {"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"};
+    model = model * Matrix_Translate(desX, 0.0f, 1.2f)
+                  * Matrix_Rotate_X(-90)
+                  * Matrix_Scale(0.09f, 0.09f, 0.09f);
+    glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+    glUniform1i(object_id_uniform, 0);
+    DrawVirtualObject(filenames[num]);
+}
+
+void renderTree(pNodoA *a, glm::mat4 model, GLint model_uniform, GLint render_as_black_uniform){
+    if (!a) return;
+    // Tentiva de evitar sobreposicao de blocos
+    drawNode(a, model, model_uniform);
+    renderTree(a->esq, model, model_uniform, render_as_black_uniform);
+    renderTree(a->dir, model, model_uniform, render_as_black_uniform);
+}
+
+void updateAll(pNodoA* root){
+    int levels = getLevel(root);
+    double levelHeight = WINDOW_HEIGHT / levels;
+    updatePositions(root,1,1, levelHeight);
+    nodeRadius = min(
+		min(((WINDOW_WIDTH / pow(2, levels)*1.0) / 2)*0.8, ((WINDOW_HEIGHT / levels) / 2)*0.8)
+		, MAX_NODE_RADIUS);
+	nodeRadius = max(nodeRadius, MIN_NODE_RADIOUS);
+
+    if (abs(nodeRadius - nodeCurrentRadius) > nodeRadiusStep) {
+		if (nodeRadius > nodeCurrentRadius)
+			nodeCurrentRadius += nodeRadiusStep;
+		else
+			nodeCurrentRadius -= nodeRadiusStep;
+	}
+}
+
+// Limite de tiro na tela
+int bulletLimit (BULLET tiro)
+{
+    if(roundf(tiro.pos_z) <= -10)
+    {
+        tiro.na_tela=false;
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
+}
+
+void drawBullets(glm::mat4 model, GLint model_uniform, GLint render_as_black_uniform){
+    for(int j=0; j<N_TIRO; j++)
+    {
+        if(tiro[j].na_tela==1)
+        {
+            tiro[j].na_tela = bulletLimit(tiro[j]);
+            tiro[j].pos_z = tiro[j].pos_z - tiro[j].velocidade;
+            model = Matrix_Translate(tiro[j].pos_x, tiro[j].pos_y, tiro[j].pos_z) * Matrix_Scale(0.10f, 0.10f, 0.10f);
+            glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+            glUniform1i(object_id_uniform, SPHERE);
+            DrawVirtualObject("sphere");
+        }
+    }
+}
+float convert_x_to_unit(double x){
+    return (x-WINDOW_WIDTH/2)/100;
+}
+float convert_y_to_unit(double y){
+    return (y-WINDOW_HEIGHT/2)/100;
+}
+
+void colision_tree(pNodoA* root, float x_tiro, float y_tiro, float z_tiro, int index_tiro){
+    if (root == NULL)
+        return;
+
+    float x_node = convert_x_to_unit(tree->currX);
+    float y_node = convert_y_to_unit(tree->currY);
+    float z_node = 0;
+    double r = nodeCurrentRadius;
+    if((x_tiro >= x_node-r/150 && x_tiro<= x_node + r/150) &&
+        (y_tiro >= y_node-r/150 && y_tiro<= y_node + r/150)
+    ){
+        tree = RemoveArvore(root, root->info);
+        tiro[index_tiro].na_tela = false;
+        return;
+    }
+    colision_tree(root->esq, x_tiro, y_tiro, z_tiro, index_tiro);
+    colision_tree(root->dir, x_tiro, y_tiro, z_tiro, index_tiro);
+}
+
+void bulletsHit(){
+    for(int j=0; j<N_TIRO; j++)
+    {
+        if(tiro[j].na_tela==1)
+        {
+            colision_tree(tree, tiro[j].pos_x,tiro[j].pos_y, tiro[j].pos_z, j);
+        }
+    }
+}
+
+
+void createBullet(){
+    for(int j=0; j < N_TIRO; j++)
+    {
+        if(tiro[j].na_tela==false)
+        {   
+            tiro[j].na_tela=true;
+            tiro[j].pos_x = (g_LastCursorPosX-WINDOW_WIDTH/2)/100;
+            tiro[j].pos_y = (g_LastCursorPosY-WINDOW_HEIGHT/2)/-100;
+            tiro[j].pos_z = 5.0f;
+            tiro[j].velocidade = 0.1f;
+            break;
+        }
+    }
+}
+
+
+//labs
+void ComputeNormals(ObjModel* model)
+{
+    if ( !model->attrib.normals.empty() )
+        return;
+
+    // Primeiro computamos as normais para todos os TRIÂNGULOS.
+    // Segundo, computamos as normais dos VÉRTICES através do método proposto
+    // por Gouraud, onde a normal de cada vértice vai ser a média das normais de
+    // todas as faces que compartilham este vértice.
+
+    size_t num_vertices = model->attrib.vertices.size() / 3;
+
+    std::vector<int> num_triangles_per_vertex(num_vertices, 0);
+    std::vector<glm::vec4> vertex_normals(num_vertices, glm::vec4(0.0f,0.0f,0.0f,0.0f));
+
+    for (size_t shape = 0; shape < model->shapes.size(); ++shape)
+    {
+        size_t num_triangles = model->shapes[shape].mesh.num_face_vertices.size();
+
+        for (size_t triangle = 0; triangle < num_triangles; ++triangle)
+        {
+            assert(model->shapes[shape].mesh.num_face_vertices[triangle] == 3);
+
+            glm::vec4  vertices[3];
+            for (size_t vertex = 0; vertex < 3; ++vertex)
+            {
+                tinyobj::index_t idx = model->shapes[shape].mesh.indices[3*triangle + vertex];
+                const float vx = model->attrib.vertices[3*idx.vertex_index + 0];
+                const float vy = model->attrib.vertices[3*idx.vertex_index + 1];
+                const float vz = model->attrib.vertices[3*idx.vertex_index + 2];
+                vertices[vertex] = glm::vec4(vx,vy,vz,1.0);
+            }
+
+            const glm::vec4  a = vertices[0];
+            const glm::vec4  b = vertices[1];
+            const glm::vec4  c = vertices[2];
+
+            const glm::vec4  n = crossproduct(b-a,c-a);
+
+            for (size_t vertex = 0; vertex < 3; ++vertex)
+            {
+                tinyobj::index_t idx = model->shapes[shape].mesh.indices[3*triangle + vertex];
+                num_triangles_per_vertex[idx.vertex_index] += 1;
+                vertex_normals[idx.vertex_index] += n;
+                model->shapes[shape].mesh.indices[3*triangle + vertex].normal_index = idx.vertex_index;
+            }
+        }
+    }
+
+    model->attrib.normals.resize( 3*num_vertices );
+
+    for (size_t i = 0; i < vertex_normals.size(); ++i)
+    {
+        glm::vec4 n = vertex_normals[i] / (float)num_triangles_per_vertex[i];
+        n /= norm(n);
+        model->attrib.normals[3*i + 0] = n.x;
+        model->attrib.normals[3*i + 1] = n.y;
+        model->attrib.normals[3*i + 2] = n.z;
+    }
+}
+
+// Constrói triângulos para futura renderização a partir de um ObjModel.
+void BuildTrianglesAndAddToVirtualScene(ObjModel* model)
+{
+    GLuint vertex_array_object_id;
+    glGenVertexArrays(1, &vertex_array_object_id);
+    glBindVertexArray(vertex_array_object_id);
+
+    std::vector<GLuint> indices;
+    std::vector<float>  model_coefficients;
+    std::vector<float>  normal_coefficients;
+    std::vector<float>  texture_coefficients;
+
+    for (size_t shape = 0; shape < model->shapes.size(); ++shape)
+    {
+        size_t first_index = indices.size();
+        size_t num_triangles = model->shapes[shape].mesh.num_face_vertices.size();
+
+        const float minval = std::numeric_limits<float>::min();
+        const float maxval = std::numeric_limits<float>::max();
+
+        glm::vec3 bbox_min = glm::vec3(maxval,maxval,maxval);
+        glm::vec3 bbox_max = glm::vec3(minval,minval,minval);
+
+        for (size_t triangle = 0; triangle < num_triangles; ++triangle)
+        {
+            assert(model->shapes[shape].mesh.num_face_vertices[triangle] == 3);
+
+            for (size_t vertex = 0; vertex < 3; ++vertex)
+            {
+                tinyobj::index_t idx = model->shapes[shape].mesh.indices[3*triangle + vertex];
+
+                indices.push_back(first_index + 3*triangle + vertex);
+
+                const float vx = model->attrib.vertices[3*idx.vertex_index + 0];
+                const float vy = model->attrib.vertices[3*idx.vertex_index + 1];
+                const float vz = model->attrib.vertices[3*idx.vertex_index + 2];
+                //printf("tri %d vert %d = (%.2f, %.2f, %.2f)\n", (int)triangle, (int)vertex, vx, vy, vz);
+                model_coefficients.push_back( vx ); // X
+                model_coefficients.push_back( vy ); // Y
+                model_coefficients.push_back( vz ); // Z
+                model_coefficients.push_back( 1.0f ); // W
+
+                bbox_min.x = std::min(bbox_min.x, vx);
+                bbox_min.y = std::min(bbox_min.y, vy);
+                bbox_min.z = std::min(bbox_min.z, vz);
+                bbox_max.x = std::max(bbox_max.x, vx);
+                bbox_max.y = std::max(bbox_max.y, vy);
+                bbox_max.z = std::max(bbox_max.z, vz);
+
+                // Inspecionando o código da tinyobjloader, o aluno Bernardo
+                // Sulzbach (2017/1) apontou que a maneira correta de testar se
+                // existem normais e coordenadas de textura no ObjModel é
+                // comparando se o índice retornado é -1. Fazemos isso abaixo.
+
+                if ( idx.normal_index != -1 )
+                {
+                    const float nx = model->attrib.normals[3*idx.normal_index + 0];
+                    const float ny = model->attrib.normals[3*idx.normal_index + 1];
+                    const float nz = model->attrib.normals[3*idx.normal_index + 2];
+                    normal_coefficients.push_back( nx ); // X
+                    normal_coefficients.push_back( ny ); // Y
+                    normal_coefficients.push_back( nz ); // Z
+                    normal_coefficients.push_back( 0.0f ); // W
+                }
+
+                if ( idx.texcoord_index != -1 )
+                {
+                    const float u = model->attrib.texcoords[2*idx.texcoord_index + 0];
+                    const float v = model->attrib.texcoords[2*idx.texcoord_index + 1];
+                    texture_coefficients.push_back( u );
+                    texture_coefficients.push_back( v );
+                }
+            }
+        }
+
+        size_t last_index = indices.size() - 1;
+
+        SceneObject theobject;
+        theobject.name           = model->shapes[shape].name;
+        theobject.first_index    = first_index; // Primeiro índice
+        theobject.num_indices    = last_index - first_index + 1; // Número de indices
+        theobject.rendering_mode = GL_TRIANGLES;       // Índices correspondem ao tipo de rasterização GL_TRIANGLES.
+        theobject.vertex_array_object_id = vertex_array_object_id;
+        printf("%s\n", theobject.name.c_str());
+        theobject.bbox_min = bbox_min;
+        theobject.bbox_max = bbox_max;
+
+        g_VirtualScene[model->shapes[shape].name] = theobject;
+    }
+
+    GLuint VBO_model_coefficients_id;
+    glGenBuffers(1, &VBO_model_coefficients_id);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO_model_coefficients_id);
+    glBufferData(GL_ARRAY_BUFFER, model_coefficients.size() * sizeof(float), NULL, GL_STATIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, model_coefficients.size() * sizeof(float), model_coefficients.data());
+    GLuint location = 0; // "(location = 0)" em "shader_vertex.glsl"
+    GLint  number_of_dimensions = 4; // vec4 em "shader_vertex.glsl"
+    glVertexAttribPointer(location, number_of_dimensions, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(location);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    if ( !normal_coefficients.empty() )
+    {
+        GLuint VBO_normal_coefficients_id;
+        glGenBuffers(1, &VBO_normal_coefficients_id);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO_normal_coefficients_id);
+        glBufferData(GL_ARRAY_BUFFER, normal_coefficients.size() * sizeof(float), NULL, GL_STATIC_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, normal_coefficients.size() * sizeof(float), normal_coefficients.data());
+        location = 1; // "(location = 1)" em "shader_vertex.glsl"
+        number_of_dimensions = 4; // vec4 em "shader_vertex.glsl"
+        glVertexAttribPointer(location, number_of_dimensions, GL_FLOAT, GL_FALSE, 0, 0);
+        glEnableVertexAttribArray(location);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    if ( !texture_coefficients.empty() )
+    {
+        GLuint VBO_texture_coefficients_id;
+        glGenBuffers(1, &VBO_texture_coefficients_id);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO_texture_coefficients_id);
+        glBufferData(GL_ARRAY_BUFFER, texture_coefficients.size() * sizeof(float), NULL, GL_STATIC_DRAW);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, texture_coefficients.size() * sizeof(float), texture_coefficients.data());
+        location = 2; // "(location = 1)" em "shader_vertex.glsl"
+        number_of_dimensions = 2; // vec2 em "shader_vertex.glsl"
+        glVertexAttribPointer(location, number_of_dimensions, GL_FLOAT, GL_FALSE, 0, 0);
+        glEnableVertexAttribArray(location);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    GLuint indices_id;
+    glGenBuffers(1, &indices_id);
+
+    // "Ligamos" o buffer. Note que o tipo agora é GL_ELEMENT_ARRAY_BUFFER.
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indices_id);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), NULL, GL_STATIC_DRAW);
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, indices.size() * sizeof(GLuint), indices.data());
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); // XXX Errado!
+    //
+
+    // "Desligamos" o VAO, evitando assim que operações posteriores venham a
+    // alterar o mesmo. Isso evita bugs.
+    glBindVertexArray(0);
+}
+
+void DrawVirtualObject(const char* object_name)
+{
+    // "Ligamos" o VAO. Informamos que queremos utilizar os atributos de
+    // vértices apontados pelo VAO criado pela função BuildTrianglesAndAddToVirtualScene(). Veja
+    // comentários detalhados dentro da definição de BuildTrianglesAndAddToVirtualScene().
+    glBindVertexArray(g_VirtualScene[object_name].vertex_array_object_id);
+
+    // Setamos as variáveis "bbox_min" e "bbox_max" do fragment shader
+    // com os parâmetros da axis-aligned bounding box (AABB) do modelo.
+    glm::vec3 bbox_min = g_VirtualScene[object_name].bbox_min;
+    glm::vec3 bbox_max = g_VirtualScene[object_name].bbox_max;
+    glUniform4f(bbox_min_uniform, bbox_min.x, bbox_min.y, bbox_min.z, 1.0f);
+    glUniform4f(bbox_max_uniform, bbox_max.x, bbox_max.y, bbox_max.z, 1.0f);
+
+    // Pedimos para a GPU rasterizar os vértices dos eixos XYZ
+    // apontados pelo VAO como linhas. Veja a definição de
+    // g_VirtualScene[""] dentro da função BuildTrianglesAndAddToVirtualScene(), e veja
+    // a documentação da função glDrawElements() em
+    // http://docs.gl/gl3/glDrawElements.
+    glDrawElements(
+        g_VirtualScene[object_name].rendering_mode,
+        g_VirtualScene[object_name].num_indices,
+        GL_UNSIGNED_INT,
+        (void*)(g_VirtualScene[object_name].first_index * sizeof(GLuint))
+    );
+
+    // "Desligamos" o VAO, evitando assim que operações posteriores venham a
+    // alterar o mesmo. Isso evita bugs.
+    glBindVertexArray(0);
 }
 
 // Função que pega a matriz M e guarda a mesma no topo da pilha
@@ -1032,6 +1551,7 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         // com o botão esquerdo pressionado.
         glfwGetCursorPos(window, &g_LastCursorPosX, &g_LastCursorPosY);
         g_LeftMouseButtonPressed = true;
+        createBullet();
     }
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
     {
@@ -1265,397 +1785,50 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
             inputText = "";
         }
     }
+    // Se o usuário apertar a tecla W,
+    if (key == GLFW_KEY_W)
+    {
+        //verificamos se ele pressionou, se sim, coloca W (índice 0 do array camera_movement_keys) como true
+        if (action == GLFW_PRESS)
+            camera_movement_keys[0] = 1;
+        //se ele soltou, coloca W como false
+        else if (action == GLFW_RELEASE)
+            camera_movement_keys[0] = 0;
+    }
+    // Se o usuário apertar a tecla S,
+    if (key == GLFW_KEY_S)
+    {
+        //verificamos se ele pressionou, se sim, coloca S (índice 1 do array camera_movement_keys) como true
+        if (action == GLFW_PRESS)
+            camera_movement_keys[1] = 1;
+        //se ele soltou, coloca W como false
+        else if (action == GLFW_RELEASE)
+            camera_movement_keys[1] = 0;
+    }
+    // Se o usuário apertar a tecla D,
+    if (key == GLFW_KEY_D)
+    {
+        //verificamos se ele pressionou, se sim, coloca D (índice 2 do array camera_movement_keys) como true
+        if (action == GLFW_PRESS)
+            camera_movement_keys[2] = 1;
+        //se ele soltou, coloca W como false
+        else if (action == GLFW_RELEASE)
+            camera_movement_keys[2] = 0;
+    }
+    // Se o usuário apertar a tecla A,
+    if (key == GLFW_KEY_A)
+    {
+        //verificamos se ele pressionou, se sim, coloca A (índice 3 do array camera_movement_keys) como true
+        if (action == GLFW_PRESS)
+            camera_movement_keys[3] = 1;
+        //se ele soltou, coloca W como false
+        else if (action == GLFW_RELEASE)
+            camera_movement_keys[3] = 0;
+    }
 
 }
 
 void ErrorCallback(int error, const char* description)
 {
     fprintf(stderr, "ERROR: GLFW: %s\n", description);
-}
-bool goToPos(pNodoA *a) {
-	
-	double y1 = a->currY;
-	double x1 = a->currX;
-	double dy = (a->y - a->currY);
-	double dx = (a->x - a->currX);
-	double slope = dy / dx;
-
-	if (abs(dy) > nodeSpeed || abs(dx) > nodeSpeed) {
-		if (abs(dy) > abs(dx)) {
-
-			if (a->y > a->currY)
-				a->currY += nodeSpeed;
-			else
-				a->currY -= nodeSpeed;
-
-			if (slope == 0) {
-				a->currX += nodeSpeed;
-			}
-			else
-				a->currX = (a->currY + slope * x1 - y1) / slope;
-
-			if (abs(slope) < EP) {
-				if (a->x > a->currX)
-					a->currX += nodeSpeed;
-				else
-					a->currX -= nodeSpeed;
-			}
-			else {
-				a->currX = (a->currY + slope * x1 - y1) / slope;
-			}
-
-		}
-		else {
-			if (a->x > a->currX)
-				a->currX += nodeSpeed;
-			else
-				a->currX -= nodeSpeed;
-
-			if (abs(slope) < EP) {
-				if(a->y > a->currY)
-					a->currY += nodeSpeed;
-				else
-					a->currY -= nodeSpeed;
-			}
-			else {
-				a->currY = (slope* a->currX - slope * x1 + y1);
-			}
-		}
-		return false;
-	}
-	else {
-		return true;
-	}
-		
-}
-
-void updatePositions(pNodoA  * currNode, int level, int col, double levelHeight) {
-	if (!currNode) return;
-
-	currNode->level = level;
-	currNode->col = col;
-
-    /*cout << "update\n";
-	cout << "node date = " << currNode->info << endl;
-    cout << "currNode->level" << currNode->level << endl;
-	cout << "currNode->x" << currNode->x << endl;
-	cout << "currNode->y" << currNode->y << endl;
-	cout << "currNode->currX" << currNode->currX << endl;
-	cout << "currNode->currY" << currNode->currY << endl;
-    */
-	int absCol = col - pow(2, level - 1) + 1;
-
-	double ww = ((WINDOW_WIDTH) / pow(2, level - 1));
-
-	currNode->x = ww * (absCol - 1) + ww / 2;
-
-
-	currNode->y = WINDOW_HEIGHT - (level*levelHeight - levelHeight / 2);
-	cout << "after\n";
-	cout << "currNode->x" << currNode->x << endl;
-	cout << "currNode->y" << currNode->y << endl;
-	cout << "currNode->currX" << currNode->currX << endl;
-	cout << "currNode->currY" << currNode->currY << endl;
-	cout << "\n";
-    
-	updatePositions(currNode->esq, level + 1, col << 1, levelHeight);
-	updatePositions(currNode->dir, level + 1, (col << 1)|1, levelHeight);
-}
-void drawNode(pNodoA *a, glm::mat4 model, GLint model_uniform){
-    a->emPosicao = goToPos(a);
-
-	//galho();
-	drawCircle(a->currX, a->currY, model, model_uniform, a->info);
-};
-void drawCircle(double x, double y, glm::mat4 model, GLint model_uniform, int num){
-    PushMatrix(model);
-    model = model * Matrix_Translate((x-550)/100,(y-350)/100, 0.0f) * Matrix_Scale(nodeCurrentRadius/150, nodeCurrentRadius/150, nodeCurrentRadius/150);
-    glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-    glUniform1i(object_id_uniform, SPHERE);
-    DrawVirtualObject("sphere");
-    drawNodeValue(num, model, model_uniform);
-    PopMatrix(model);
-};
-
-void drawNodeValue(int num, glm::mat4 model, GLint model_uniform){
-
-    if (num < 10){
-        drawNumber(num, 0.0f,model, model_uniform);
-    } else{
-        int secondDigit = num/10;
-        int firstDigit = num - secondDigit * 10;
-        drawNumber(secondDigit, -0.4f,model, model_uniform);
-        drawNumber(firstDigit, 0.4f, model, model_uniform);
-    }
-}
-
-void drawNumber(int num, double desX,glm::mat4 model, GLint model_uniform){
-    char *filenames[10] = {"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"};
-    model = model * Matrix_Translate(desX, 0.0f, 1.2f)
-                  * Matrix_Rotate_X(-90)
-                  * Matrix_Scale(0.09f, 0.09f, 0.09f);
-    glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-    glUniform1i(object_id_uniform, 0);
-    DrawVirtualObject(filenames[num]);
-}
-
-void renderTree(pNodoA *a, glm::mat4 model, GLint model_uniform, GLint render_as_black_uniform){
-    if (!a) return;
-    // Tentiva de evitar sobreposicao de blocos
-    drawNode(a, model, model_uniform);
-    renderTree(a->esq, model, model_uniform, render_as_black_uniform);
-    renderTree(a->dir, model, model_uniform, render_as_black_uniform);
-}
-
-void updateAll(pNodoA* root){
-    int levels = getLevel(root);
-    double levelHeight = WINDOW_HEIGHT / levels;
-    updatePositions(root,1,1, levelHeight);
-    nodeRadius = min(
-		min(((WINDOW_WIDTH / pow(2, levels)*1.0) / 2)*0.8, ((WINDOW_HEIGHT / levels) / 2)*0.8)
-		, MAX_NODE_RADIUS);
-	nodeRadius = max(nodeRadius, MIN_NODE_RADIOUS);
-
-    if (abs(nodeRadius - nodeCurrentRadius) > nodeRadiusStep) {
-		if (nodeRadius > nodeCurrentRadius)
-			nodeCurrentRadius += nodeRadiusStep;
-		else
-			nodeCurrentRadius -= nodeRadiusStep;
-	}
-}
-
-void ComputeNormals(ObjModel* model)
-{
-    if ( !model->attrib.normals.empty() )
-        return;
-
-    // Primeiro computamos as normais para todos os TRIÂNGULOS.
-    // Segundo, computamos as normais dos VÉRTICES através do método proposto
-    // por Gouraud, onde a normal de cada vértice vai ser a média das normais de
-    // todas as faces que compartilham este vértice.
-
-    size_t num_vertices = model->attrib.vertices.size() / 3;
-
-    std::vector<int> num_triangles_per_vertex(num_vertices, 0);
-    std::vector<glm::vec4> vertex_normals(num_vertices, glm::vec4(0.0f,0.0f,0.0f,0.0f));
-
-    for (size_t shape = 0; shape < model->shapes.size(); ++shape)
-    {
-        size_t num_triangles = model->shapes[shape].mesh.num_face_vertices.size();
-
-        for (size_t triangle = 0; triangle < num_triangles; ++triangle)
-        {
-            assert(model->shapes[shape].mesh.num_face_vertices[triangle] == 3);
-
-            glm::vec4  vertices[3];
-            for (size_t vertex = 0; vertex < 3; ++vertex)
-            {
-                tinyobj::index_t idx = model->shapes[shape].mesh.indices[3*triangle + vertex];
-                const float vx = model->attrib.vertices[3*idx.vertex_index + 0];
-                const float vy = model->attrib.vertices[3*idx.vertex_index + 1];
-                const float vz = model->attrib.vertices[3*idx.vertex_index + 2];
-                vertices[vertex] = glm::vec4(vx,vy,vz,1.0);
-            }
-
-            const glm::vec4  a = vertices[0];
-            const glm::vec4  b = vertices[1];
-            const glm::vec4  c = vertices[2];
-
-            const glm::vec4  n = crossproduct(b-a,c-a);
-
-            for (size_t vertex = 0; vertex < 3; ++vertex)
-            {
-                tinyobj::index_t idx = model->shapes[shape].mesh.indices[3*triangle + vertex];
-                num_triangles_per_vertex[idx.vertex_index] += 1;
-                vertex_normals[idx.vertex_index] += n;
-                model->shapes[shape].mesh.indices[3*triangle + vertex].normal_index = idx.vertex_index;
-            }
-        }
-    }
-
-    model->attrib.normals.resize( 3*num_vertices );
-
-    for (size_t i = 0; i < vertex_normals.size(); ++i)
-    {
-        glm::vec4 n = vertex_normals[i] / (float)num_triangles_per_vertex[i];
-        n /= norm(n);
-        model->attrib.normals[3*i + 0] = n.x;
-        model->attrib.normals[3*i + 1] = n.y;
-        model->attrib.normals[3*i + 2] = n.z;
-    }
-}
-
-// Constrói triângulos para futura renderização a partir de um ObjModel.
-void BuildTrianglesAndAddToVirtualScene(ObjModel* model)
-{
-    GLuint vertex_array_object_id;
-    glGenVertexArrays(1, &vertex_array_object_id);
-    glBindVertexArray(vertex_array_object_id);
-
-    std::vector<GLuint> indices;
-    std::vector<float>  model_coefficients;
-    std::vector<float>  normal_coefficients;
-    std::vector<float>  texture_coefficients;
-
-    for (size_t shape = 0; shape < model->shapes.size(); ++shape)
-    {
-        size_t first_index = indices.size();
-        size_t num_triangles = model->shapes[shape].mesh.num_face_vertices.size();
-
-        const float minval = std::numeric_limits<float>::min();
-        const float maxval = std::numeric_limits<float>::max();
-
-        glm::vec3 bbox_min = glm::vec3(maxval,maxval,maxval);
-        glm::vec3 bbox_max = glm::vec3(minval,minval,minval);
-
-        for (size_t triangle = 0; triangle < num_triangles; ++triangle)
-        {
-            assert(model->shapes[shape].mesh.num_face_vertices[triangle] == 3);
-
-            for (size_t vertex = 0; vertex < 3; ++vertex)
-            {
-                tinyobj::index_t idx = model->shapes[shape].mesh.indices[3*triangle + vertex];
-
-                indices.push_back(first_index + 3*triangle + vertex);
-
-                const float vx = model->attrib.vertices[3*idx.vertex_index + 0];
-                const float vy = model->attrib.vertices[3*idx.vertex_index + 1];
-                const float vz = model->attrib.vertices[3*idx.vertex_index + 2];
-                //printf("tri %d vert %d = (%.2f, %.2f, %.2f)\n", (int)triangle, (int)vertex, vx, vy, vz);
-                model_coefficients.push_back( vx ); // X
-                model_coefficients.push_back( vy ); // Y
-                model_coefficients.push_back( vz ); // Z
-                model_coefficients.push_back( 1.0f ); // W
-
-                bbox_min.x = std::min(bbox_min.x, vx);
-                bbox_min.y = std::min(bbox_min.y, vy);
-                bbox_min.z = std::min(bbox_min.z, vz);
-                bbox_max.x = std::max(bbox_max.x, vx);
-                bbox_max.y = std::max(bbox_max.y, vy);
-                bbox_max.z = std::max(bbox_max.z, vz);
-
-                // Inspecionando o código da tinyobjloader, o aluno Bernardo
-                // Sulzbach (2017/1) apontou que a maneira correta de testar se
-                // existem normais e coordenadas de textura no ObjModel é
-                // comparando se o índice retornado é -1. Fazemos isso abaixo.
-
-                if ( idx.normal_index != -1 )
-                {
-                    const float nx = model->attrib.normals[3*idx.normal_index + 0];
-                    const float ny = model->attrib.normals[3*idx.normal_index + 1];
-                    const float nz = model->attrib.normals[3*idx.normal_index + 2];
-                    normal_coefficients.push_back( nx ); // X
-                    normal_coefficients.push_back( ny ); // Y
-                    normal_coefficients.push_back( nz ); // Z
-                    normal_coefficients.push_back( 0.0f ); // W
-                }
-
-                if ( idx.texcoord_index != -1 )
-                {
-                    const float u = model->attrib.texcoords[2*idx.texcoord_index + 0];
-                    const float v = model->attrib.texcoords[2*idx.texcoord_index + 1];
-                    texture_coefficients.push_back( u );
-                    texture_coefficients.push_back( v );
-                }
-            }
-        }
-
-        size_t last_index = indices.size() - 1;
-
-        SceneObject theobject;
-        theobject.name           = model->shapes[shape].name;
-        theobject.first_index    = first_index; // Primeiro índice
-        theobject.num_indices    = last_index - first_index + 1; // Número de indices
-        theobject.rendering_mode = GL_TRIANGLES;       // Índices correspondem ao tipo de rasterização GL_TRIANGLES.
-        theobject.vertex_array_object_id = vertex_array_object_id;
-        printf("%s\n", theobject.name.c_str());
-        theobject.bbox_min = bbox_min;
-        theobject.bbox_max = bbox_max;
-
-        g_VirtualScene[model->shapes[shape].name] = theobject;
-    }
-
-    GLuint VBO_model_coefficients_id;
-    glGenBuffers(1, &VBO_model_coefficients_id);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO_model_coefficients_id);
-    glBufferData(GL_ARRAY_BUFFER, model_coefficients.size() * sizeof(float), NULL, GL_STATIC_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, model_coefficients.size() * sizeof(float), model_coefficients.data());
-    GLuint location = 0; // "(location = 0)" em "shader_vertex.glsl"
-    GLint  number_of_dimensions = 4; // vec4 em "shader_vertex.glsl"
-    glVertexAttribPointer(location, number_of_dimensions, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(location);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    if ( !normal_coefficients.empty() )
-    {
-        GLuint VBO_normal_coefficients_id;
-        glGenBuffers(1, &VBO_normal_coefficients_id);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO_normal_coefficients_id);
-        glBufferData(GL_ARRAY_BUFFER, normal_coefficients.size() * sizeof(float), NULL, GL_STATIC_DRAW);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, normal_coefficients.size() * sizeof(float), normal_coefficients.data());
-        location = 1; // "(location = 1)" em "shader_vertex.glsl"
-        number_of_dimensions = 4; // vec4 em "shader_vertex.glsl"
-        glVertexAttribPointer(location, number_of_dimensions, GL_FLOAT, GL_FALSE, 0, 0);
-        glEnableVertexAttribArray(location);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-    }
-
-    if ( !texture_coefficients.empty() )
-    {
-        GLuint VBO_texture_coefficients_id;
-        glGenBuffers(1, &VBO_texture_coefficients_id);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO_texture_coefficients_id);
-        glBufferData(GL_ARRAY_BUFFER, texture_coefficients.size() * sizeof(float), NULL, GL_STATIC_DRAW);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, texture_coefficients.size() * sizeof(float), texture_coefficients.data());
-        location = 2; // "(location = 1)" em "shader_vertex.glsl"
-        number_of_dimensions = 2; // vec2 em "shader_vertex.glsl"
-        glVertexAttribPointer(location, number_of_dimensions, GL_FLOAT, GL_FALSE, 0, 0);
-        glEnableVertexAttribArray(location);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-    }
-
-    GLuint indices_id;
-    glGenBuffers(1, &indices_id);
-
-    // "Ligamos" o buffer. Note que o tipo agora é GL_ELEMENT_ARRAY_BUFFER.
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indices_id);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), NULL, GL_STATIC_DRAW);
-    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, indices.size() * sizeof(GLuint), indices.data());
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); // XXX Errado!
-    //
-
-    // "Desligamos" o VAO, evitando assim que operações posteriores venham a
-    // alterar o mesmo. Isso evita bugs.
-    glBindVertexArray(0);
-}
-
-void DrawVirtualObject(const char* object_name)
-{
-    // "Ligamos" o VAO. Informamos que queremos utilizar os atributos de
-    // vértices apontados pelo VAO criado pela função BuildTrianglesAndAddToVirtualScene(). Veja
-    // comentários detalhados dentro da definição de BuildTrianglesAndAddToVirtualScene().
-    glBindVertexArray(g_VirtualScene[object_name].vertex_array_object_id);
-
-    // Setamos as variáveis "bbox_min" e "bbox_max" do fragment shader
-    // com os parâmetros da axis-aligned bounding box (AABB) do modelo.
-    glm::vec3 bbox_min = g_VirtualScene[object_name].bbox_min;
-    glm::vec3 bbox_max = g_VirtualScene[object_name].bbox_max;
-    glUniform4f(bbox_min_uniform, bbox_min.x, bbox_min.y, bbox_min.z, 1.0f);
-    glUniform4f(bbox_max_uniform, bbox_max.x, bbox_max.y, bbox_max.z, 1.0f);
-
-    // Pedimos para a GPU rasterizar os vértices dos eixos XYZ
-    // apontados pelo VAO como linhas. Veja a definição de
-    // g_VirtualScene[""] dentro da função BuildTrianglesAndAddToVirtualScene(), e veja
-    // a documentação da função glDrawElements() em
-    // http://docs.gl/gl3/glDrawElements.
-    glDrawElements(
-        g_VirtualScene[object_name].rendering_mode,
-        g_VirtualScene[object_name].num_indices,
-        GL_UNSIGNED_INT,
-        (void*)(g_VirtualScene[object_name].first_index * sizeof(GLuint))
-    );
-
-    // "Desligamos" o VAO, evitando assim que operações posteriores venham a
-    // alterar o mesmo. Isso evita bugs.
-    glBindVertexArray(0);
 }
