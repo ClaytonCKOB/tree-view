@@ -42,6 +42,7 @@
 #include "tree.h"
 using namespace std;
 
+
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
 struct ObjModel
@@ -72,6 +73,8 @@ struct ObjModel
 void BuildTrianglesAndAddToVirtualScene(ObjModel*); // Constrói representação de um ObjModel como malha de triângulos para renderização
 void ComputeNormals(ObjModel* model); // Computa normais de um ObjModel, caso não existam.
 void DrawVirtualObject(const char* object_name); // Desenha um objeto armazenado em g_VirtualScene
+void LoadShadersFromFiles(); // Carrega os shaders de vértice e fragmento, criando um programa de GPU
+void LoadTextureImage(const char* filename); // Função que carrega imagens de textura
 
 
 // Declaração de funções utilizadas para pilha de matrizes de modelagem.
@@ -204,6 +207,9 @@ const double LIMIT_TREE = 100;
 const double MAX_NODE_RADIUS = 80.0;
 const double MIN_NODE_RADIOUS = 40;
 
+GLuint g_NumLoadedTextures = 0;
+
+
 #define N_TIRO 1
 
 // Variáveis da câmera Free Camera
@@ -315,11 +321,16 @@ int main()
     glm::mat4 the_model;
     glm::mat4 the_view;
 
-    #define SPHERE 0
-    #define BUNNY  1
+    #define SPHERE 1
     #define PLANE  2
-    #define LEAF   3
-    #define EIGHT  8
+    #define NUMBER 3
+    #define LEAF   4
+
+    LoadShadersFromFiles();
+
+    LoadTextureImage("../../img/wood.jpg");      // TextureImage0
+    LoadTextureImage("../../img/leaf.jpg");      // TextureImage1
+    LoadTextureImage("../../img/tc-earth_daymap_surface.jpg");      // TextureImage2
 
     ObjModel spheremodel("../../obj/sphere.obj");
     ComputeNormals(&spheremodel);
@@ -377,13 +388,6 @@ int main()
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
     {
-        // Aqui executamos as operações de renderização
-
-        // Definimos a cor do "fundo" do framebuffer como branco.  Tal cor é
-        // definida como coeficientes RGBA: Red, Green, Blue, Alpha; isto é:
-        // Vermelho, Verde, Azul, Alpha (valor de transparência).
-        // Conversaremos sobre sistemas de cores nas aulas de Modelos de Iluminação.
-        //
         //           R     G     B     A
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -395,9 +399,7 @@ int main()
         // os shaders de vértice e fragmentos).
         glUseProgram(program_id);
 
-        // "Ligamos" o VAO. Informamos que queremos utilizar os atributos de
-        // vértices apontados pelo VAO criado pela função BuildTriangles(). Veja
-        // comentários detalhados dentro da definição de BuildTriangles().
+
         glBindVertexArray(vertex_array_object_id);
 
         // Computamos a posição da câmera utilizando coordenadas esféricas.  As
@@ -495,19 +497,6 @@ int main()
         drawBullets(model, model_uniform, render_as_black_uniform);
         bulletsHit();
 
-        // // Desenhamos o modelo da esfera
-        // model = Matrix_Translate(-1.0f,0.0f,0.0f)
-        //       * Matrix_Rotate_Z(0.6f)
-        //       * Matrix_Rotate_X(0.2f)
-        //       * Matrix_Rotate_Y(g_AngleY + (float)glfwGetTime() * 0.1f);
-        // glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        // glUniform1i(object_id_uniform, SPHERE);
-        // DrawVirtualObject("sphere");
-        // Neste ponto a matriz model recuperada é a matriz inicial (translação do torso)
-
-        // Agora queremos desenhar os eixos XYZ de coordenadas GLOBAIS.
-        // Para tanto, colocamos a matriz de modelagem igual à identidade.
-        // Veja slides 2-14 e 184-190 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
         model = Matrix_Identity();
 
         // Enviamos a nova matriz "model" para a placa de vídeo (GPU). Veja o
@@ -520,43 +509,10 @@ int main()
         // Informamos para a placa de vídeo (GPU) que a variável booleana
         // "render_as_black" deve ser colocada como "false". Veja o arquivo
         // "shader_vertex.glsl".
+
         glUniform1i(render_as_black_uniform, false);
-
-        // Pedimos para a GPU rasterizar os vértices dos eixos XYZ
-        // apontados pelo VAO como linhas. Veja a definição de
-        // g_VirtualScene["axes"] dentro da função BuildTriangles(), e veja
-        // a documentação da função glDrawElements() em
-        // http://docs.gl/gl3/glDrawElements.
-        // glDrawElements(
-        //     g_VirtualScene["axes"].rendering_mode,
-        //     g_VirtualScene["axes"].num_indices,
-        //     GL_UNSIGNED_INT,
-        //     (void*)g_VirtualScene["axes"].first_index
-        // );
-
-        // "Desligamos" o VAO, evitando assim que operações posteriores venham a
-        // alterar o mesmo. Isso evita bugs.
         glBindVertexArray(0);
-
-        // Pegamos um vértice com coordenadas de modelo (0.5, 0.5, 0.5, 1) e o
-        // passamos por todos os sistemas de coordenadas armazenados nas
-        // matrizes the_model, the_view, e the_projection; e escrevemos na tela
-        // as matrizes e pontos resultantes dessas transformações.
-        //glm::vec4 p_model(0.5f, 0.5f, 0.5f, 1.0f);
-        //TextRendering_ShowModelViewProjection(window, the_projection, the_view, the_model, p_model);
-
-        // O framebuffer onde OpenGL executa as operações de renderização não
-        // é o mesmo que está sendo mostrado para o usuário, caso contrário
-        // seria possível ver artefatos conhecidos como "screen tearing". A
-        // chamada abaixo faz a troca dos buffers, mostrando para o usuário
-        // tudo que foi renderizado pelas funções acima.
-        // Veja o link: Veja o link: https://en.wikipedia.org/w/index.php?title=Multiple_buffering&oldid=793452829#Double_buffering_in_computer_graphics
         glfwSwapBuffers(window);
-
-        // Verificamos com o sistema operacional se houve alguma interação do
-        // usuário (teclado, mouse, ...). Caso positivo, as funções de callback
-        // definidas anteriormente usando glfwSet*Callback() serão chamadas
-        // pela biblioteca GLFW.
         glfwPollEvents();
     }
 
@@ -696,7 +652,7 @@ void drawNumber(int num, double desX,glm::mat4 model, GLint model_uniform){
                   * Matrix_Rotate_X(-90)
                   * Matrix_Scale(0.09f, 0.09f, 0.09f);
     glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-    glUniform1i(object_id_uniform, 0);
+    glUniform1i(object_id_uniform, NUMBER);
     DrawVirtualObject(filenames[num]);
 }
 
@@ -1213,17 +1169,7 @@ GLuint BuildTriangles()
     //
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(model_coefficients), model_coefficients);
 
-    // Precisamos então informar um índice de "local" ("location"), o qual será
-    // utilizado no shader "shader_vertex.glsl" para acessar os valores
-    // armazenados no VBO "ligado" acima. Também, informamos a dimensão (número de
-    // coeficientes) destes atributos. Como em nosso caso são pontos em coordenadas
-    // homogêneas, temos quatro coeficientes por vértice (X,Y,Z,W). Isso define
-    // um tipo de dado chamado de "vec4" em "shader_vertex.glsl": um vetor com
-    // quatro coeficientes. Finalmente, informamos que os dados estão em ponto
-    // flutuante com 32 bits (GL_FLOAT).
-    // Esta função também informa que o VBO "ligado" acima em glBindBuffer()
-    // está dentro do VAO "ligado" acima por glBindVertexArray().
-    // Veja https://www.khronos.org/opengl/wiki/Vertex_Specification#Vertex_Buffer_Object
+
     GLuint location = 0; // "(location = 0)" em "shader_vertex.glsl"
     GLint  number_of_dimensions = 4; // vec4 em "shader_vertex.glsl"
     glVertexAttribPointer(location, number_of_dimensions, GL_FLOAT, GL_FALSE, 0, 0);
@@ -1237,11 +1183,7 @@ GLuint BuildTriangles()
     // alterar o mesmo. Isso evita bugs.
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    // Agora repetimos todos os passos acima para atribuir um novo atributo a
-    // cada vértice: uma cor (veja slides 109-112 do documento Aula_03_Rendering_Pipeline_Grafico.pdf e slide 111 do documento Aula_04_Modelagem_Geometrica_3D.pdf).
-    // Tal cor é definida como coeficientes RGBA: Red, Green, Blue, Alpha;
-    // isto é: Vermelho, Verde, Azul, Alpha (valor de transparência).
-    // Conversaremos sobre sistemas de cores nas aulas de Modelos de Iluminação.
+
     GLfloat color_coefficients[] = {
     // Cores dos vértices do cubo
     //  R     G     B     A
@@ -1794,50 +1736,115 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
             inputText = "";
         }
     }
-    // Se o usuário apertar a tecla W,
-    if (key == GLFW_KEY_W)
-    {
-        //verificamos se ele pressionou, se sim, coloca W (índice 0 do array camera_movement_keys) como true
-        if (action == GLFW_PRESS)
-            camera_movement_keys[0] = 1;
-        //se ele soltou, coloca W como false
-        else if (action == GLFW_RELEASE)
-            camera_movement_keys[0] = 0;
-    }
-    // Se o usuário apertar a tecla S,
-    if (key == GLFW_KEY_S)
-    {
-        //verificamos se ele pressionou, se sim, coloca S (índice 1 do array camera_movement_keys) como true
-        if (action == GLFW_PRESS)
-            camera_movement_keys[1] = 1;
-        //se ele soltou, coloca W como false
-        else if (action == GLFW_RELEASE)
-            camera_movement_keys[1] = 0;
-    }
-    // Se o usuário apertar a tecla D,
-    if (key == GLFW_KEY_D)
-    {
-        //verificamos se ele pressionou, se sim, coloca D (índice 2 do array camera_movement_keys) como true
-        if (action == GLFW_PRESS)
-            camera_movement_keys[2] = 1;
-        //se ele soltou, coloca W como false
-        else if (action == GLFW_RELEASE)
-            camera_movement_keys[2] = 0;
-    }
-    // Se o usuário apertar a tecla A,
-    if (key == GLFW_KEY_A)
-    {
-        //verificamos se ele pressionou, se sim, coloca A (índice 3 do array camera_movement_keys) como true
-        if (action == GLFW_PRESS)
-            camera_movement_keys[3] = 1;
-        //se ele soltou, coloca W como false
-        else if (action == GLFW_RELEASE)
-            camera_movement_keys[3] = 0;
-    }
 
 }
 
 void ErrorCallback(int error, const char* description)
 {
     fprintf(stderr, "ERROR: GLFW: %s\n", description);
+}
+
+
+// Função que carrega uma imagem para ser utilizada como textura
+void LoadTextureImage(const char* filename)
+{
+    printf("Carregando imagem \"%s\"... ", filename);
+
+    // Primeiro fazemos a leitura da imagem do disco
+    stbi_set_flip_vertically_on_load(true);
+    int width;
+    int height;
+    int channels;
+    unsigned char *data = stbi_load(filename, &width, &height, &channels, 3);
+
+    if ( data == NULL )
+    {
+        fprintf(stderr, "ERROR: Cannot open image file \"%s\".\n", filename);
+        std::exit(EXIT_FAILURE);
+    }
+
+    printf("OK (%dx%d).\n", width, height);
+
+    // Agora criamos objetos na GPU com OpenGL para armazenar a textura
+    GLuint texture_id;
+    GLuint sampler_id;
+    glGenTextures(1, &texture_id);
+    glGenSamplers(1, &sampler_id);
+
+    // Veja slides 95-96 do documento Aula_20_Mapeamento_de_Texturas.pdf
+    glSamplerParameteri(sampler_id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glSamplerParameteri(sampler_id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // Parâmetros de amostragem da textura.
+    glSamplerParameteri(sampler_id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glSamplerParameteri(sampler_id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // Agora enviamos a imagem lida do disco para a GPU
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+
+    GLuint textureunit = g_NumLoadedTextures;
+    glActiveTexture(GL_TEXTURE0 + textureunit);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glBindSampler(textureunit, sampler_id);
+
+    stbi_image_free(data);
+
+    g_NumLoadedTextures += 1;
+}
+
+
+// Função que carrega os shaders de vértices e de fragmentos que serão
+// utilizados para renderização. Veja slides 180-200 do documento Aula_03_Rendering_Pipeline_Grafico.pdf.
+//
+void LoadShadersFromFiles()
+{
+    // Note que o caminho para os arquivos "shader_vertex.glsl" e
+    // "shader_fragment.glsl" estão fixados, sendo que assumimos a existência
+    // da seguinte estrutura no sistema de arquivos:
+    //
+    //    + FCG_Lab_01/
+    //    |
+    //    +--+ bin/
+    //    |  |
+    //    |  +--+ Release/  (ou Debug/ ou Linux/)
+    //    |     |
+    //    |     o-- main.exe
+    //    |
+    //    +--+ src/
+    //       |
+    //       o-- shader_vertex.glsl
+    //       |
+    //       o-- shader_fragment.glsl
+    //
+    vertex_shader_id = LoadShader_Vertex("../../src/shader_vertex.glsl");
+    fragment_shader_id = LoadShader_Fragment("../../src/shader_fragment.glsl");
+
+    // Deletamos o programa de GPU anterior, caso ele exista.
+    if ( program_id != 0 )
+        glDeleteProgram(program_id);
+
+    // Criamos um programa de GPU utilizando os shaders carregados acima.
+    program_id = CreateGpuProgram(vertex_shader_id, fragment_shader_id);
+
+    // Buscamos o endereço das variáveis definidas dentro do Vertex Shader.
+    // Utilizaremos estas variáveis para enviar dados para a placa de vídeo
+    // (GPU)! Veja arquivo "shader_vertex.glsl" e "shader_fragment.glsl".
+    model_uniform           = glGetUniformLocation(program_id, "model"); // Variável da matriz "model"
+    view_uniform            = glGetUniformLocation(program_id, "view"); // Variável da matriz "view" em shader_vertex.glsl
+    projection_uniform      = glGetUniformLocation(program_id, "projection"); // Variável da matriz "projection" em shader_vertex.glsl
+    object_id_uniform       = glGetUniformLocation(program_id, "object_id"); // Variável "object_id" em shader_fragment.glsl
+    bbox_min_uniform        = glGetUniformLocation(program_id, "bbox_min");
+    bbox_max_uniform        = glGetUniformLocation(program_id, "bbox_max");
+
+    // Variáveis em "shader_fragment.glsl" para acesso das imagens de textura
+    glUseProgram(program_id);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage0"), 0);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage1"), 1);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage2"), 2);
+    glUseProgram(0);
 }
