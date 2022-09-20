@@ -111,6 +111,10 @@ GLint object_id_uniform;
 GLint bbox_min_uniform;
 GLint bbox_max_uniform;
 
+//convert methods
+float convert_x_to_unit(double x);
+float convert_y_to_unit(double y);
+float convert_radius_to_unit(double r);
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
 // Definimos uma estrutura que armazenará dados necessários para renderizar
@@ -665,7 +669,8 @@ void drawNode(pNodoA *a, glm::mat4 model, GLint model_uniform){
 };
 void drawCircle(double x, double y, glm::mat4 model, GLint model_uniform, int num){
     PushMatrix(model);
-    model = model * Matrix_Translate((x-WINDOW_WIDTH/2)/100,(y-WINDOW_HEIGHT/2)/100, 0.0f) * Matrix_Scale(nodeCurrentRadius/150, nodeCurrentRadius/150, nodeCurrentRadius/150);
+    double r = convert_radius_to_unit(nodeCurrentRadius);
+    model = model * Matrix_Translate(convert_x_to_unit(x),convert_y_to_unit(y), 0.0f) * Matrix_Scale(r,r,r);
     glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
     glUniform1i(object_id_uniform, SPHERE);
     DrawVirtualObject("sphere");
@@ -754,19 +759,23 @@ float convert_x_to_unit(double x){
 float convert_y_to_unit(double y){
     return (y-WINDOW_HEIGHT/2)/100;
 }
+float convert_radius_to_unit(double r){
+    return r/150;
+}
 
 void colision_tree(pNodoA* root, float x_tiro, float y_tiro, float z_tiro, int index_tiro){
     if (root == NULL)
         return;
 
-    float x_node = convert_x_to_unit(tree->currX);
-    float y_node = convert_y_to_unit(tree->currY);
+    float x_node = convert_x_to_unit(root->currX);
+    float y_node = convert_y_to_unit(root->currY);
     float z_node = 0;
-    double r = nodeCurrentRadius;
-    if((x_tiro >= x_node-r/150 && x_tiro<= x_node + r/150) &&
-        (y_tiro >= y_node-r/150 && y_tiro<= y_node + r/150)
+    double r = convert_radius_to_unit(nodeCurrentRadius);
+    if((x_tiro >= x_node-r && x_tiro<= x_node + r) &&
+        (y_tiro >= y_node-r && y_tiro<= y_node + r) &&
+        (z_node + r >= z_tiro && z_node -r <= z_tiro )
     ){
-        tree = RemoveArvore(root, root->info);
+        tree = RemoveArvore(tree, root->info);
         tiro[index_tiro].na_tela = false;
         return;
     }
