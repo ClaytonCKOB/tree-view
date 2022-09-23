@@ -72,39 +72,46 @@ void main(){
         float U = 0.0;
         float V = 0.0;
 
-        if ( object_id == SPHERE ){
-            float rho = 1.0;
-            vec4 bbox_center = (bbox_min + bbox_max) / 2.0;
-            vec4 p = bbox_center + rho * (position_model - bbox_center)/length(position_model - bbox_center);
-            p = p - bbox_center;
+        vec3 Kd0;
 
-            float theta = atan(p.x, p.z);
-            float phi = asin(p.y/rho);
+        switch(object_id){
+            case SPHERE:
+                float rho = 1.0;
+                vec4 bbox_center = (bbox_min + bbox_max) / 2.0;
+                vec4 p = bbox_center + rho * (position_model - bbox_center)/length(position_model - bbox_center);
+                p = p - bbox_center;
 
-            U = (theta + M_PI)/(2*M_PI);
-            V = (phi + M_PI_2)/M_PI;
+                float theta = atan(p.x, p.z);
+                float phi = asin(p.y/rho);
 
-        }else if(object_id == NUMBER){
-            float minx = bbox_min.x;
-            float maxx = bbox_max.x;
+                U = (theta + M_PI)/(2*M_PI);
+                V = (phi + M_PI_2)/M_PI;
 
-            float miny = bbox_min.y;
-            float maxy = bbox_max.y;
+                Kd0 = texture(TextureImage0, vec2(U,V)).rgb;
+            break;
 
-            float minz = bbox_min.z;
-            float maxz = bbox_max.z;
+            case NUMBER:
+                float minx = bbox_min.x;
+                float maxx = bbox_max.x;
 
-            U = (position_model.x - minx)/(maxx - minx);
-            V = (position_model.y - miny)/(maxy - miny);
+                float miny = bbox_min.y;
+                float maxy = bbox_max.y;
+
+                float minz = bbox_min.z;
+                float maxz = bbox_max.z;
+
+                U = (position_model.x - minx)/(maxx - minx);
+                V = (position_model.y - miny)/(maxy - miny);
+
+                Kd0 = texture(TextureImage1, vec2(U,V)).rgb;
+            break;
+
+            case PLANE:
+                U = texcoords.x;
+                V = texcoords.y;
+                Kd0 = texture(TextureImage0, vec2(U,V)).rgb;
+            break;
         }
-        else if ( object_id == PLANE ){
-            // Coordenadas de textura do plano, obtidas do arquivo OBJ.
-            U = texcoords.x;
-            V = texcoords.y;
-        }
-
-        vec3 Kd0 = texture(TextureImage0, vec2(U,V)).rgb;
-        vec3 Kd1 = texture(TextureImage1, vec2(U,V)).rgb;
 
         // Equação de Iluminação
         float lambert = max(0,dot(n,l));
