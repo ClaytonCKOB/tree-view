@@ -115,8 +115,6 @@ void main(){
 
         // Cor final com correção gamma, considerando monitor sRGB.
         color.rgb = pow(color.rgb, vec3(1.0,1.0,1.0)/2.2);
-    }else{
-        color = cor_interpolada_pelo_rasterizador;
     }
 } 
 
