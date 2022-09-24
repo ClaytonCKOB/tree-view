@@ -480,6 +480,7 @@ int main()
         glUniformMatrix4fv(view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
         glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
 
+        glm::mat4 model = Matrix_Identity();
         model = Matrix_Identity(); // Transformação inicial = identidade.
 
         model = Matrix_Translate(20.0f,-5.0f,0.0f)
