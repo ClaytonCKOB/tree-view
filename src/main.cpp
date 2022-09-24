@@ -218,6 +218,9 @@ glm::vec4 camera_view_vector;
 glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f);
 glm::vec4 w;
 glm::vec4 u;                //W  S  D  A
+float y_view;
+float z_view;
+float x_view;
 int camera_movement_keys[] = {0, 0, 0, 0};
 BULLET tiro[N_TIRO];
 int main()
@@ -406,15 +409,14 @@ int main()
         // variáveis g_CameraDistance, g_CameraPhi, e g_CameraTheta são
         // controladas pelo mouse do usuário. Veja as funções CursorPosCallback()
         // e ScrollCallback().
-        float r = g_CameraDistance;
-        float y = sin(g_CameraPhi);
-        float z = -1 *cos(g_CameraPhi)*cos(g_CameraTheta);
-        float x = cos(g_CameraPhi)*sin(g_CameraTheta);
+        y_view = sin(g_CameraPhi);
+        z_view = -1 *cos(g_CameraPhi)*cos(g_CameraTheta);
+        x_view = cos(g_CameraPhi)*sin(g_CameraTheta);
 
 
         // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
         // Veja slides 195-227 e 229-234 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
-        camera_view_vector = glm::vec4(x,y,z,0.0f); // Vetor "view", sentido para onde a câmera está virada
+        camera_view_vector = glm::vec4(x_view,y_view,z_view,0.0f); // Vetor "view", sentido para onde a câmera está virada
         w = -camera_view_vector/norm(camera_view_vector);
         u = crossproduct(camera_up_vector, w)/norm(crossproduct(camera_up_vector, w));
 
@@ -478,7 +480,7 @@ int main()
         glUniformMatrix4fv(view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
         glUniformMatrix4fv(projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
 
-        glm::mat4 model = Matrix_Identity(); // Transformação inicial = identidade.
+        model = Matrix_Identity(); // Transformação inicial = identidade.
 
         model = Matrix_Translate(20.0f,-5.0f,0.0f)
               * Matrix_Scale(40.0f, 5.0f, 20.0f);
@@ -756,9 +758,12 @@ void createBullet(){
         if(tiro[j].na_tela==false)
         {   
             tiro[j].na_tela=true;
-            tiro[j].pos_x = (g_LastCursorPosX-WINDOW_WIDTH/2)/100;
-            tiro[j].pos_y = (g_LastCursorPosY-WINDOW_HEIGHT/2)/-100;
-            tiro[j].pos_z = 5.0f;
+            cout << "x = " << 10*x_view << endl;
+            cout << "y = " << 10*y_view << endl;
+            cout << "z = " << 10*-z_view << endl;
+            tiro[j].pos_x = 10*x_view;
+            tiro[j].pos_y = 10*y_view;
+            tiro[j].pos_z = 10*-z_view;
             tiro[j].velocidade = 0.1f;
             break;
         }
