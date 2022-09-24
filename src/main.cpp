@@ -916,7 +916,6 @@ void BuildTrianglesAndAddToVirtualScene(ObjModel* model)
         theobject.num_indices    = last_index - first_index + 1; // Número de indices
         theobject.rendering_mode = GL_TRIANGLES;       // Índices correspondem ao tipo de rasterização GL_TRIANGLES.
         theobject.vertex_array_object_id = vertex_array_object_id;
-        printf("%s\n", theobject.name.c_str());
         theobject.bbox_min = bbox_min;
         theobject.bbox_max = bbox_max;
 
