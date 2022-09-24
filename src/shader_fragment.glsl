@@ -78,7 +78,7 @@ void main(){
             case SPHERE:
                 float rho = 1.0;
                 vec4 bbox_center = (bbox_min + bbox_max) / 2.0;
-                vec4 p = bbox_center + rho * (position_model - bbox_center)/length(position_model - bbox_center);
+                p = bbox_center + rho * (position_model - bbox_center)/length(position_model - bbox_center);
                 p = p - bbox_center;
 
                 float theta = atan(p.x, p.z);
