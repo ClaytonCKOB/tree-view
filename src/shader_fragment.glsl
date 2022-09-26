@@ -101,7 +101,7 @@ void main(){
                 float maxz = bbox_max.z;
 
                 U = (position_model.x - minx)/(maxx - minx);
-                V = (position_model.y - miny)/(maxy - miny);
+                V = (position_model.z - minz)/(maxz - minz);
 
                 Kd0 = texture(TextureImage1, vec2(U,V)).rgb;
             break;
