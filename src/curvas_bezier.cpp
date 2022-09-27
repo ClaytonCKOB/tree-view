@@ -1,41 +1,43 @@
-#include <curva_bezier.h>
+#include <curvas_bezier.h>
+#include <cstdlib>
+#include <cstdio>
 
-point_t curva_bezier(double t){
+
+point_t curva_bezier(double t, int *aux, bool *firstCurve){
     point_t *p1 = (point_t*) malloc(sizeof(point_t));
     point_t *p2 = (point_t*) malloc(sizeof(point_t));
     point_t *p3 = (point_t*) malloc(sizeof(point_t));
     point_t *p4 = (point_t*) malloc(sizeof(point_t));
     point_t *c12 = (point_t*) malloc(sizeof(point_t));
     point_t *c23 = (point_t*) malloc(sizeof(point_t));
-    point_t *c = (point_t*) malloc(sizeof(point_t));
+    point_t c;
     
 
     p1->x = 0.0f;
     p1->y = 0.0f;
-    p1->z = 0.0f;
+    p1->z = -2.0f;
 
-    p2->x = -1.0f;
-    p2->y = 1.0f;
-    p2->z = -1.0f;
+    p2->x = -6.0f;
+    p2->y =  2.0f;
+    p2->z = -4.0f;
 
     p3->x = 0.0f;
     p3->y = 0.0f;
-    p3->z = -2.0f;
+    p3->z = -6.0f;
 
-    p4->x = 1.0f;
-    p4->y = 1.0f;
-    p4->z = -1.0f;
+    p4->x = 6.0f;
+    p4->y = 2.0f;
+    p4->z =-4.0f;
 
     if (t > 1.0){
-        if (int(t) != aux){
-            printf("%d - %d\n", int(t), aux);
-            firstCurve = not firstCurve; 
-            aux = int(t);
+        if (int(t) != *aux){
+            *firstCurve = not *firstCurve; 
+            *aux = int(t);
         }
         t = t - int(t);
     }
 
-    if (firstCurve){
+    if (*firstCurve){
         c12->x = p1->x + t*(p2->x - p1->x);  
         c12->y = p1->y + t*(p2->y - p1->y);  
         c12->z = p1->z + t*(p2->z - p1->z);  
@@ -58,11 +60,9 @@ point_t curva_bezier(double t){
 
     }
 
-    printf("%lf\n", t);
-
-    c->x = c12->x + t*(c23->x - c12->x);  
-    c->y = c12->y + t*(c23->y - c12->y);  
-    c->z = c12->z + t*(c23->z - c12->z);  
+    c.x = c12->x + t*(c23->x - c12->x);  
+    c.y = c12->y + t*(c23->y - c12->y);  
+    c.z = c12->z + t*(c23->z - c12->z);  
 
     return c;
 }

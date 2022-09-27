@@ -40,6 +40,9 @@
 #include "utils.h"
 #include "matrices.h"
 #include "tree.h"
+#include "curvas_bezier.h"
+
+
 using namespace std;
 
 
@@ -223,9 +226,24 @@ float z_view;
 float x_view;
 int camera_movement_keys[] = {0, 0, 0, 0};
 BULLET tiro[N_TIRO];
+
+point_t leaf_point;
+
+bool curve = true;
+int init = 0;
+
+bool *firstCurve = &curve;
+int *aux = &init;
+
+int base = 0;
+int timeInative = 0;
+
+double addX = 0;
+double addY = 0;
+
 int main()
 {
-
+    cout << *aux;
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
     // sistema operacional, onde poderemos renderizar com OpenGL.
     int success = glfwInit();
@@ -300,16 +318,11 @@ int main()
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
 
-    // Variáveis auxiliares utilizadas para chamada à função
-    // TextRendering_ShowModelViewProjection(), armazenando matrizes 4x4.
-    glm::mat4 the_projection;
-    glm::mat4 the_model;
-    glm::mat4 the_view;
-
     #define SPHERE 1
     #define PLANE  2
     #define NUMBER 3
     #define LEAF   4
+    #define INATIVE_TIME 5
 
     LoadShadersFromFiles();
 
@@ -326,7 +339,6 @@ int main()
     ObjModel leafmodel("../../obj/leaf.obj");
     ComputeNormals(&leafmodel);
     BuildTrianglesAndAddToVirtualScene(&leafmodel);
-
     // Carregando numeros
     ObjModel zeromodel("../../obj/zero.obj");
     ComputeNormals(&zeromodel);
@@ -372,9 +384,13 @@ int main()
     ComputeNormals(&plane);
     BuildTrianglesAndAddToVirtualScene(&plane);
 
+    
+
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
     {
+        addX = 0;
+        addY = 0;
         //           R     G     B     A
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -463,6 +479,7 @@ int main()
 
         glm::mat4 model = Matrix_Identity();
         model = Matrix_Identity(); // Transformação inicial = identidade.
+ 
 
         model = Matrix_Translate(20.0f,-5.0f,0.0f)
               * Matrix_Scale(40.0f, 5.0f, 20.0f);
@@ -477,9 +494,21 @@ int main()
         if (tree != NULL){
             updateAll(tree);
             renderTree(tree, model, model_uniform, render_as_black_uniform);
+            addX = convert_x_to_unit(tree->currX);
+            addY = convert_y_to_unit(tree->currY);
         }
         drawBullets(model, model_uniform, render_as_black_uniform);
         bulletsHit();
+
+        if(timeInative - base > INATIVE_TIME){
+            leaf_point = curva_bezier(glfwGetTime()/2, aux, firstCurve);
+            cout << "\n";
+            model = Matrix_Translate(leaf_point.x + addX,leaf_point.y + addY,leaf_point.z + 5.0f)
+                * Matrix_Scale(0.25f, 0.25f, 0.25);
+            glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+            glUniform1i(object_id_uniform, SPHERE);
+            DrawVirtualObject("sphere");
+        }
 
         model = Matrix_Identity();
 
@@ -498,6 +527,8 @@ int main()
         glBindVertexArray(0);
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        timeInative = glfwGetTime();
     }
 
     // Finalizamos o uso dos recursos do sistema operacional
@@ -1619,6 +1650,7 @@ void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 // tecla do teclado. Veja http://www.glfw.org/docs/latest/input_guide.html#input_key
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
 {
+    base = timeInative;
     // ================
     // Não modifique este loop! Ele é utilizando para correção automatizada dos
     // laboratórios. Deve ser sempre o primeiro comando desta função KeyCallback().

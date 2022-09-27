@@ -4,4 +4,4 @@ typedef struct {
     float z;
 } point_t;
 
-point_t curva_bezier(double t);
+point_t curva_bezier(double t, int *aux, bool *firstCurve);
