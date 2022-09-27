@@ -72,6 +72,15 @@ void main(){
         float U = 0.0;
         float V = 0.0;
 
+        float minx = bbox_min.x;
+        float maxx = bbox_max.x;
+
+        float miny = bbox_min.y;
+        float maxy = bbox_max.y;
+
+        float minz = bbox_min.z;
+        float maxz = bbox_max.z;
+
         vec3 Kd0;
 
         switch(object_id){
@@ -91,14 +100,30 @@ void main(){
             break;
 
             case NUMBER:
-                float minx = bbox_min.x;
-                float maxx = bbox_max.x;
+                minx = bbox_min.x;
+                maxx = bbox_max.x;
 
-                float miny = bbox_min.y;
-                float maxy = bbox_max.y;
+                miny = bbox_min.y;
+                maxy = bbox_max.y;
 
-                float minz = bbox_min.z;
-                float maxz = bbox_max.z;
+                minz = bbox_min.z;
+                maxz = bbox_max.z;
+
+                U = (position_model.x - minx)/(maxx - minx);
+                V = (position_model.z - minz)/(maxz - minz);
+
+                Kd0 = texture(TextureImage1, vec2(U,V)).rgb;
+            break;
+
+            case LEAF:
+                minx = bbox_min.x;
+                maxx = bbox_max.x;
+
+                miny = bbox_min.y;
+                maxy = bbox_max.y;
+
+                minz = bbox_min.z;
+                maxz = bbox_max.z;
 
                 U = (position_model.x - minx)/(maxx - minx);
                 V = (position_model.z - minz)/(maxz - minz);

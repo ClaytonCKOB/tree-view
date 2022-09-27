@@ -322,7 +322,7 @@ int main()
     #define PLANE  2
     #define NUMBER 3
     #define LEAF   4
-    #define INATIVE_TIME 5
+    #define INATIVE_TIME 10
 
     LoadShadersFromFiles();
 
@@ -502,12 +502,12 @@ int main()
 
         if(timeInative - base > INATIVE_TIME){
             leaf_point = curva_bezier(glfwGetTime()/2, aux, firstCurve);
-            cout << "\n";
             model = Matrix_Translate(leaf_point.x + addX,leaf_point.y + addY,leaf_point.z + 5.0f)
-                * Matrix_Scale(0.25f, 0.25f, 0.25);
+                  * Matrix_Rotate_X(-90)
+                  * Matrix_Scale(0.09f, 0.09f, 0.09f);;
             glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-            glUniform1i(object_id_uniform, SPHERE);
-            DrawVirtualObject("sphere");
+            glUniform1i(object_id_uniform, NUMBER);
+            DrawVirtualObject("leaf");
         }
 
         model = Matrix_Identity();
