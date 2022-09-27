@@ -1,6 +1,6 @@
 ./bin/macOS/main: src/main.cpp src/glad.c include/*.h
 	mkdir -p bin/macOS
-	g++ -std=c++11 -Wall -Wno-unused-function -g -I ./include/ -o ./bin/macOS/main src/main.cpp src/glad.c src/tiny_obj_loader.cpp src/stb_image.cpp src/tree.cpp -framework GLUT  -framework OpenGL -L/usr/local/lib -lglfw -lm -ldl -lpthread
+	g++ -std=c++11 -Wall -Wno-unused-function -g -I ./include/ -o ./bin/macOS/main src/main.cpp src/glad.c src/tiny_obj_loader.cpp src/stb_image.cpp src/tree.cpp src/curvas_bezier.cpp -framework GLUT  -framework OpenGL -L/usr/local/lib -lglfw -lm -ldl -lpthread
 
 .PHONY: clean run
 clean:
