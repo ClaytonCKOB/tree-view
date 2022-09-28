@@ -242,6 +242,9 @@ int timeInative = 0;
 double addX = 0;
 double addY = 0;
 
+double mov_x = 0.0f;
+double mov_y = 0.0f;
+
 int main()
 {
     cout << *aux;
@@ -425,29 +428,50 @@ int main()
 
         // Computamos a matriz "View" utilizando os parâmetros da câmera para
         // definir o sistema de coordenadas da câmera.  Veja slides 2-14, 184-190 e 236-242 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
-        glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
 
         // Se a tecla W está sendo pressionada (camera_movement_keys[0] = true), movimentamos a câmera para frente.
-        if (camera_movement_keys[0])
-        {
-            camera_position_c -= (w * 0.01f);
+        // if (camera_movement_keys[0])
+        // {
+        //     camera_position_c -= (w * 0.01f);
+        // }
+        // // Se a tecla S está sendo pressionada (camera_movement_keys[1] = true), movimentamos a câmera para trás.
+        // if (camera_movement_keys[1])
+        // {
+        //     camera_position_c += (w * 0.01f);
+        // }
+        // // Se a tecla D está sendo pressionada (camera_movement_keys[2] = true), movimentamos a câmera para a direita.
+        // if (camera_movement_keys[2])
+        // {
+        //     camera_position_c += (u * 0.01f);
+        // }
+        // // Se a tecla A está sendo pressionada (camera_movement_keys[3] = true), movimentamos a câmera para a esquerda.
+        // if (camera_movement_keys[3])
+        // {
+        //     camera_position_c -= (u * 0.01f);
+        // }
+
+
+        if (mov_x >= 1.0f){
+            camera_position_c += camera_view_vector/norm(camera_view_vector);
+            mov_x = 0;
         }
-        // Se a tecla S está sendo pressionada (camera_movement_keys[1] = true), movimentamos a câmera para trás.
-        if (camera_movement_keys[1])
-        {
-            camera_position_c += (w * 0.01f);
+        
+        else if(mov_x <= -1.0f){
+            camera_position_c -= camera_view_vector/norm(camera_view_vector);
+            mov_x = 0;
         }
-        // Se a tecla D está sendo pressionada (camera_movement_keys[2] = true), movimentamos a câmera para a direita.
-        if (camera_movement_keys[2])
-        {
-            camera_position_c += (u * 0.01f);
+        
+        else if(mov_y >= 1.0f){
+            camera_position_c += crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)));
+            mov_y = 0;
         }
-        // Se a tecla A está sendo pressionada (camera_movement_keys[3] = true), movimentamos a câmera para a esquerda.
-        if (camera_movement_keys[3])
-        {
-            camera_position_c -= (u * 0.01f);
+        
+        else if(mov_y <= -1.0f){
+            camera_position_c -= crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)));
+            mov_y = 0;
         }
 
+        glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
         // Agora computamos a matriz de Projeção.
         glm::mat4 projection;
 
@@ -1706,6 +1730,26 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     //   Se apertar tecla shift+Z então g_AngleZ -= delta;
 
     float delta = 3.141592 / 16; // 22.5 graus, em radianos.
+
+    if (key == GLFW_KEY_W && action == GLFW_PRESS)
+    {
+        mov_x += 1.0f;
+    }
+
+    if (key == GLFW_KEY_S && action == GLFW_PRESS)
+    {
+        mov_x += -1.0f;
+    }
+
+    if (key == GLFW_KEY_A && action == GLFW_PRESS)
+    {
+        mov_y += -1.0f;
+    }
+
+    if (key == GLFW_KEY_D && action == GLFW_PRESS)
+    {
+        mov_y += 1.0f;
+    }
 
     if (key == GLFW_KEY_X && action == GLFW_PRESS)
     {
