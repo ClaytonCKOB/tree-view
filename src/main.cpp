@@ -121,6 +121,7 @@ GLint bbox_max_uniform;
 float convert_x_to_unit(double x);
 float convert_y_to_unit(double y);
 float convert_radius_to_unit(double r);
+void connectChildren(pNodoA *a);
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
 // Definimos uma estrutura que armazenará dados necessários para renderizar
@@ -208,7 +209,7 @@ const double WINDOW_WIDTH = 1100.0;
 const double WINDOW_HEIGHT = 700.0;
 const double LIMIT_TREE = 100;
 const double MAX_NODE_RADIUS = 80.0;
-const double MIN_NODE_RADIOUS = 40;
+const double MIN_NODE_RADIOUS = 55;
 
 GLuint g_NumLoadedTextures = 0;
 
@@ -323,6 +324,7 @@ int main()
     #define NUMBER 3
     #define LEAF   4
     #define INATIVE_TIME 10
+    #define BRANCH 5
 
     LoadShadersFromFiles();
 
@@ -335,6 +337,10 @@ int main()
     ObjModel spheremodel("../../obj/sphere.obj");
     ComputeNormals(&spheremodel);
     BuildTrianglesAndAddToVirtualScene(&spheremodel);
+
+    ObjModel branchmodel("../../obj/branch.obj");
+    ComputeNormals(&branchmodel);
+    BuildTrianglesAndAddToVirtualScene(&branchmodel);
 
     ObjModel leafmodel("../../obj/leaf.obj");
     ComputeNormals(&leafmodel);
@@ -635,9 +641,37 @@ void updatePositions(pNodoA  * currNode, int level, int col, double levelHeight)
 void drawNode(pNodoA *a, glm::mat4 model, GLint model_uniform){
     a->emPosicao = goToPos(a);
 
-	//galho();
+    connectChildren(a);
 	drawCircle(a->currX, a->currY, model, model_uniform, a->info);
 };
+
+void connectChildren(pNodoA *a){
+    float rotate = 2.5f;
+    float scale;
+    if (a->esq) {
+        float scale_y = (convert_y_to_unit(a->currY) - convert_y_to_unit(a->esq->currY))/4;
+        float scale_x = (convert_x_to_unit(a->currX) - convert_x_to_unit(a->esq->currX))/4;
+		if (a->esq->emPosicao) {
+            glm::mat4 model = Matrix_Translate((convert_x_to_unit(a->esq->currX) + convert_x_to_unit(a->currX))/2 ,(convert_y_to_unit(a->esq->currY) + convert_y_to_unit(a->currY))/2,0.0f)
+              * Matrix_Scale(scale_x, scale_y, 0.2f) * Matrix_Rotate_Z(rotate);
+            glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+            glUniform1i(object_id_uniform, PLANE);
+            DrawVirtualObject("branch");
+		}
+		
+	}
+	if (a->dir) {
+		if (a->dir->emPosicao) {
+            float scale_y = (convert_y_to_unit(a->currY) - convert_y_to_unit(a->dir->currY))/4;
+            float scale_x = (convert_x_to_unit(a->dir->currX) - convert_x_to_unit(a->currX))/4;
+            glm::mat4 model = Matrix_Translate((convert_x_to_unit(a->dir->currX) + convert_x_to_unit(a->currX))/2 ,(convert_y_to_unit(a->dir->currY) + convert_y_to_unit(a->currY))/2,0.0f)
+              * Matrix_Scale(scale_x, scale_y, 0.2f) * Matrix_Rotate_Z(rotate+1.6);
+            glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+            glUniform1i(object_id_uniform, PLANE);
+            DrawVirtualObject("branch");
+		}
+	}
+}
 void drawCircle(double x, double y, glm::mat4 model, GLint model_uniform, int num){
     PushMatrix(model);
     double r = convert_radius_to_unit(nodeCurrentRadius);
