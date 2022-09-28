@@ -242,8 +242,13 @@ int timeInative = 0;
 double addX = 0;
 double addY = 0;
 
-double mov_x = 0.0f;
-double mov_y = 0.0f;
+bool front = false;
+bool back  = false;
+bool right_mov = false;
+bool left_mov  = false;
+double percent = 0;
+
+double currTime = 0;
 
 int main()
 {
@@ -451,24 +456,39 @@ int main()
         // }
 
 
-        if (mov_x >= 1.0f){
-            camera_position_c += camera_view_vector/norm(camera_view_vector);
-            mov_x = 0;
+        if (front){
+            percent = glfwGetTime() - currTime;
+            camera_position_c.z += (camera_view_vector/norm(camera_view_vector)).z * percent/10;
+            if(percent > 1){
+                front = false;
+            }
+
         }
         
-        else if(mov_x <= -1.0f){
-            camera_position_c -= camera_view_vector/norm(camera_view_vector);
-            mov_x = 0;
+        else if(back){
+            percent = glfwGetTime() - currTime;
+            camera_position_c.z -= (camera_view_vector/norm(camera_view_vector)).z * percent/10;
+            if(percent > 1){
+                back = false;
+            }
         }
         
-        else if(mov_y >= 1.0f){
-            camera_position_c += crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)));
-            mov_y = 0;
+        else if(right_mov){
+            // camera_position_c += crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)));
+            // right_mov = false;
+            percent = glfwGetTime() - currTime;
+            camera_position_c.x += (crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)))).x * percent/10;
+            if(percent > 1){
+                right_mov = false;
+            }
         }
         
-        else if(mov_y <= -1.0f){
-            camera_position_c -= crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)));
-            mov_y = 0;
+        else if(left_mov){
+            percent = glfwGetTime() - currTime;
+            camera_position_c.x -= (crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)))).x * percent/10;
+            if(percent > 1){
+                left_mov = false;
+            }
         }
 
         glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
@@ -1733,22 +1753,39 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
 
     if (key == GLFW_KEY_W && action == GLFW_PRESS)
     {
-        mov_x += 1.0f;
+        front = true;
+        back  = false;
+        right_mov = false;
+        left_mov  = false;
+        currTime = glfwGetTime();
+
     }
 
     if (key == GLFW_KEY_S && action == GLFW_PRESS)
     {
-        mov_x += -1.0f;
+        front = false;
+        back  = true;
+        right_mov = false;
+        left_mov  = false;
+        currTime = glfwGetTime();
     }
 
     if (key == GLFW_KEY_A && action == GLFW_PRESS)
     {
-        mov_y += -1.0f;
+        front = false;
+        back  = false;
+        right_mov = false;
+        left_mov  = true;
+        currTime = glfwGetTime();
     }
 
     if (key == GLFW_KEY_D && action == GLFW_PRESS)
     {
-        mov_y += 1.0f;
+        front = false;
+        back  = false;
+        right_mov = true;
+        left_mov  = false;
+        currTime = glfwGetTime();    
     }
 
     if (key == GLFW_KEY_X && action == GLFW_PRESS)
