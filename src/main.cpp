@@ -41,6 +41,7 @@
 #include "matrices.h"
 #include "tree.h"
 #include "curvas_bezier.h"
+#include "collisions.h"
 
 
 using namespace std;
@@ -150,6 +151,7 @@ int bulletLimit(BULLET tiro);
 void bulletsHit ();
 void drawBullets(glm::mat4 model, GLint model_uniform, GLint render_as_black_uniform);
 void createBullet();
+bool cameraTreeColision(pNodoA* root,glm::vec4 point);
 // Abaixo definimos variáveis globais utilizadas em várias funções do código.
 
 // A cena virtual é uma lista de objetos nomeados, guardados em um dicionário
@@ -252,7 +254,6 @@ double currTime = 0;
 
 int main()
 {
-    cout << *aux;
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
     // sistema operacional, onde poderemos renderizar com OpenGL.
     int success = glfwInit();
@@ -434,42 +435,28 @@ int main()
         // Computamos a matriz "View" utilizando os parâmetros da câmera para
         // definir o sistema de coordenadas da câmera.  Veja slides 2-14, 184-190 e 236-242 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
 
-        // Se a tecla W está sendo pressionada (camera_movement_keys[0] = true), movimentamos a câmera para frente.
-        // if (camera_movement_keys[0])
-        // {
-        //     camera_position_c -= (w * 0.01f);
-        // }
-        // // Se a tecla S está sendo pressionada (camera_movement_keys[1] = true), movimentamos a câmera para trás.
-        // if (camera_movement_keys[1])
-        // {
-        //     camera_position_c += (w * 0.01f);
-        // }
-        // // Se a tecla D está sendo pressionada (camera_movement_keys[2] = true), movimentamos a câmera para a direita.
-        // if (camera_movement_keys[2])
-        // {
-        //     camera_position_c += (u * 0.01f);
-        // }
-        // // Se a tecla A está sendo pressionada (camera_movement_keys[3] = true), movimentamos a câmera para a esquerda.
-        // if (camera_movement_keys[3])
-        // {
-        //     camera_position_c -= (u * 0.01f);
-        // }
 
 
         if (front){
             percent = glfwGetTime() - currTime;
-            camera_position_c.z += (camera_view_vector/norm(camera_view_vector)).z * percent/10;
-            if(percent > 1){
-                front = false;
+            glm::vec4 camera_position_c_aux = glm::vec4(camera_position_c.x,camera_position_c.y, camera_position_c.z + (camera_view_vector/norm(camera_view_vector)).z * percent/10,1.0f);
+            if(!cameraTreeColision(tree, camera_position_c_aux) && !hasPointPlaneCollision(camera_position_c_aux, glm::vec4(20.0f,-5.0f,0.0f, 1.0f))){
+                camera_position_c.z += (camera_view_vector/norm(camera_view_vector)).z * percent/10;
+                if(percent > 1){
+                    front = false;
+                }
             }
 
         }
         
         else if(back){
             percent = glfwGetTime() - currTime;
-            camera_position_c.z -= (camera_view_vector/norm(camera_view_vector)).z * percent/10;
-            if(percent > 1){
-                back = false;
+            glm::vec4 camera_position_c_aux = glm::vec4(camera_position_c.x,camera_position_c.y, camera_position_c.z - (camera_view_vector/norm(camera_view_vector)).z * percent/10,1.0f);
+            if(!cameraTreeColision(tree, camera_position_c_aux)  && !hasPointPlaneCollision(camera_position_c_aux, glm::vec4(20.0f,-5.0f,0.0f, 1.0f))){
+                camera_position_c.z -= (camera_view_vector/norm(camera_view_vector)).z * percent/10;
+                if(percent > 1){
+                    back = false;
+                }
             }
         }
         
@@ -477,17 +464,24 @@ int main()
             // camera_position_c += crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)));
             // right_mov = false;
             percent = glfwGetTime() - currTime;
-            camera_position_c.x += (crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)))).x * percent/10;
-            if(percent > 1){
-                right_mov = false;
+            glm::vec4 camera_position_c_aux = glm::vec4(camera_position_c.x + (crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)))).x * percent/10,camera_position_c.y,camera_position_c.z ,1.0f);
+            cout << hasPointPlaneCollision(camera_position_c_aux, glm::vec4(20.0f,-5.0f,0.0f, 1.0f)) << endl;
+            if(!cameraTreeColision(tree, camera_position_c_aux) && !hasPointPlaneCollision(camera_position_c_aux, glm::vec4(20.0f,-5.0f,0.0f, 1.0f))){
+                camera_position_c.x += (crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)))).x * percent/10;
+                if(percent > 1){
+                    right_mov = false;
+                }
             }
         }
         
         else if(left_mov){
             percent = glfwGetTime() - currTime;
-            camera_position_c.x -= (crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)))).x * percent/10;
-            if(percent > 1){
-                left_mov = false;
+            glm::vec4 camera_position_c_aux = glm::vec4(camera_position_c.x - (crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)))).x * percent/10,camera_position_c.y,camera_position_c.z ,1.0f);
+            if(!cameraTreeColision(tree, camera_position_c_aux) && !hasPointPlaneCollision(camera_position_c_aux, glm::vec4(20.0f,-5.0f,0.0f, 1.0f))){
+                camera_position_c.x -= (crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)))).x * percent/10;
+                if(percent > 1){
+                    left_mov = false;
+                }
             }
         }
 
@@ -651,14 +645,6 @@ void updatePositions(pNodoA  * currNode, int level, int col, double levelHeight)
 	currNode->level = level;
 	currNode->col = col;
 
-    /*cout << "update\n";
-	cout << "node date = " << currNode->info << endl;
-    cout << "currNode->level" << currNode->level << endl;
-	cout << "currNode->x" << currNode->x << endl;
-	cout << "currNode->y" << currNode->y << endl;
-	cout << "currNode->currX" << currNode->currX << endl;
-	cout << "currNode->currY" << currNode->currY << endl;
-    */
 	int absCol = col - pow(2, level - 1) + 1;
 
 	double ww = ((WINDOW_WIDTH) / pow(2, level - 1));
@@ -670,14 +656,6 @@ void updatePositions(pNodoA  * currNode, int level, int col, double levelHeight)
 
 
 	currNode->y = WINDOW_HEIGHT - (level*levelHeight - levelHeight / 2);
-	/*cout << "after\n";
-	cout << "node date = " << currNode->info << endl;
-    cout << "currNode->level" << currNode->level << endl;
-	cout << "currNode->x" << currNode->x << endl;
-	cout << "currNode->y" << currNode->y << endl;
-	cout << "currNode->currX" << currNode->currX << endl;
-	cout << "currNode->currY" << currNode->currY << endl;
-    */
     
 	updatePositions(currNode->esq, level + 1, col << 1, levelHeight);
 	updatePositions(currNode->dir, level + 1, (col << 1)|1, levelHeight);
@@ -820,10 +798,9 @@ void colision_tree(pNodoA* root, float x_tiro, float y_tiro, float z_tiro, int i
     float y_node = convert_y_to_unit(root->currY);
     float z_node = 0;
     double r = convert_radius_to_unit(nodeCurrentRadius);
-    if((x_tiro >= x_node-r && x_tiro<= x_node + r) &&
-        (y_tiro >= y_node-r && y_tiro<= y_node + r) &&
-        (z_node + r >= z_tiro && z_node -r <= z_tiro )
-    ){
+    glm::vec4 sphere = glm::vec4(convert_x_to_unit(root->currX), convert_y_to_unit(root->currY),0.0f, 0.0f);
+    glm::vec4 bullet = glm::vec4(x_tiro, y_tiro,z_tiro, 0.0f);
+    if(hasSphereSphereCollision(sphere, r, bullet, 0.10f)){
         tree = RemoveArvore(tree, root->info);
         tiro[index_tiro].na_tela = false;
         return;
@@ -831,7 +808,14 @@ void colision_tree(pNodoA* root, float x_tiro, float y_tiro, float z_tiro, int i
     colision_tree(root->esq, x_tiro, y_tiro, z_tiro, index_tiro);
     colision_tree(root->dir, x_tiro, y_tiro, z_tiro, index_tiro);
 }
-
+bool cameraTreeColision(pNodoA* root,glm::vec4 point){
+    if(!root){return false;}
+    glm::vec4 sphere = glm::vec4(convert_x_to_unit(root->currX), convert_y_to_unit(root->currY),0.0f, 0.0f);
+    if(hasSphereBulletCollision(sphere, convert_radius_to_unit(nodeCurrentRadius), point)){
+        return true;
+    }
+    return cameraTreeColision(root->esq, point) || cameraTreeColision(root->dir, point);
+}
 void bulletsHit(){
     for(int j=0; j<N_TIRO; j++)
     {
@@ -849,12 +833,9 @@ void createBullet(){
         if(tiro[j].na_tela==false)
         {   
             tiro[j].na_tela=true;
-            cout << "x = " << 10*x_view << endl;
-            cout << "y = " << 10*y_view << endl;
-            cout << "z = " << 10*-z_view << endl;
-            tiro[j].pos_x = 10*x_view;
-            tiro[j].pos_y = 10*y_view;
-            tiro[j].pos_z = 10*-z_view;
+            tiro[j].pos_x = camera_view_vector.x + camera_position_c.x;
+            tiro[j].pos_y = camera_view_vector.y + camera_position_c.y;
+            tiro[j].pos_z = -camera_view_vector.z + camera_position_c.z;
             tiro[j].velocidade = 0.1f;
             break;
         }
