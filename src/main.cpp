@@ -123,10 +123,7 @@ float convert_x_to_unit(double x);
 float convert_y_to_unit(double y);
 float convert_radius_to_unit(double r);
 void connectChildren(pNodoA *a);
-// Definimos uma estrutura que armazenará dados necessários para renderizar
-// cada objeto da cena virtual.
-// Definimos uma estrutura que armazenará dados necessários para renderizar
-// cada objeto da cena virtual.
+
 struct SceneObject
 {
     std::string  name;        // Nome do objeto
@@ -151,13 +148,23 @@ int bulletLimit(BULLET tiro);
 void bulletsHit ();
 void drawBullets(glm::mat4 model, GLint model_uniform, GLint render_as_black_uniform);
 void createBullet();
-bool cameraTreeColision(pNodoA* root,glm::vec4 point);
-// Abaixo definimos variáveis globais utilizadas em várias funções do código.
+#define N_TIRO 1
+BULLET tiro[N_TIRO];
+// Variável que controla se o texto informativo será mostrado na tela.
+int digitos[2] = {}; //Limitar a dois digitos por conta do tamanho do nodo
+pNodoA *tree = NULL;
+const double EP = 0.1;
+double nodeSpeed = 2.0;
+double nodeRadius;
+double nodeRadiusStep = .2;
+double nodeCurrentRadius = 40;
+string inputText;
+const double WINDOW_WIDTH = 1100.0;
+const double WINDOW_HEIGHT = 700.0;
+const double LIMIT_TREE = 100;
+const double MAX_NODE_RADIUS = 80.0;
+const double MIN_NODE_RADIOUS = 55;
 
-// A cena virtual é uma lista de objetos nomeados, guardados em um dicionário
-// (map).  Veja dentro da função BuildTriangles() como que são incluídos
-// objetos dentro da variável g_VirtualScene, e veja na função main() como
-// estes são acessados.
 std::map<std::string, SceneObject> g_VirtualScene;
 
 // Pilha que guardará as matrizes de modelagem.
@@ -198,27 +205,11 @@ float g_TorsoPositionY = 0.0f;
 // Variável que controla o tipo de projeção utilizada: perspectiva ou ortográfica.
 bool g_UsePerspectiveProjection = true;
 
-// Variável que controla se o texto informativo será mostrado na tela.
-int digitos[2] = {}; //Limitar a dois digitos por conta do tamanho do nodo
-pNodoA *tree = NULL;
-const double EP = 0.1;
-double nodeSpeed = 2.0;
-double nodeRadius;
-double nodeRadiusStep = .2;
-double nodeCurrentRadius = 40;
-string inputText;
-const double WINDOW_WIDTH = 1100.0;
-const double WINDOW_HEIGHT = 700.0;
-const double LIMIT_TREE = 100;
-const double MAX_NODE_RADIUS = 80.0;
-const double MIN_NODE_RADIOUS = 55;
-
 GLuint g_NumLoadedTextures = 0;
 
 
-#define N_TIRO 1
-
 // Variáveis da câmera Free Camera
+bool cameraTreeColision(pNodoA* root,glm::vec4 point);
 glm::vec4 camera_position_c = glm::vec4(0,0, 9.0f,1.0f);
 glm::vec4 camera_view_vector;
 glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f);
@@ -228,7 +219,6 @@ float y_view;
 float z_view;
 float x_view;
 int camera_movement_keys[] = {0, 0, 0, 0};
-BULLET tiro[N_TIRO];
 
 point_t leaf_point;
 
@@ -425,7 +415,7 @@ int main()
         z_view = -1 *cos(g_CameraPhi)*cos(g_CameraTheta);
         x_view = cos(g_CameraPhi)*sin(g_CameraTheta);
 
-
+        cout << y_view << endl;
         // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
         // Veja slides 195-227 e 229-234 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
         camera_view_vector = glm::vec4(x_view,y_view,z_view,0.0f); // Vetor "view", sentido para onde a câmera está virada
@@ -442,7 +432,7 @@ int main()
             glm::vec4 camera_position_c_aux = glm::vec4(camera_position_c.x,camera_position_c.y, camera_position_c.z + (camera_view_vector/norm(camera_view_vector)).z * percent/10,1.0f);
             if(!cameraTreeColision(tree, camera_position_c_aux) && !hasPointPlaneCollision(camera_position_c_aux, glm::vec4(20.0f,-5.0f,0.0f, 1.0f))){
                 camera_position_c.z += (camera_view_vector/norm(camera_view_vector)).z * percent/10;
-                if(percent > 1){
+                if(percent > 0.5){
                     front = false;
                 }
             }
@@ -454,7 +444,7 @@ int main()
             glm::vec4 camera_position_c_aux = glm::vec4(camera_position_c.x,camera_position_c.y, camera_position_c.z - (camera_view_vector/norm(camera_view_vector)).z * percent/10,1.0f);
             if(!cameraTreeColision(tree, camera_position_c_aux)  && !hasPointPlaneCollision(camera_position_c_aux, glm::vec4(20.0f,-5.0f,0.0f, 1.0f))){
                 camera_position_c.z -= (camera_view_vector/norm(camera_view_vector)).z * percent/10;
-                if(percent > 1){
+                if(percent > 0.5){
                     back = false;
                 }
             }
@@ -468,7 +458,7 @@ int main()
             cout << hasPointPlaneCollision(camera_position_c_aux, glm::vec4(20.0f,-5.0f,0.0f, 1.0f)) << endl;
             if(!cameraTreeColision(tree, camera_position_c_aux) && !hasPointPlaneCollision(camera_position_c_aux, glm::vec4(20.0f,-5.0f,0.0f, 1.0f))){
                 camera_position_c.x += (crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)))).x * percent/10;
-                if(percent > 1){
+                if(percent > 0.5){
                     right_mov = false;
                 }
             }
@@ -479,7 +469,7 @@ int main()
             glm::vec4 camera_position_c_aux = glm::vec4(camera_position_c.x - (crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)))).x * percent/10,camera_position_c.y,camera_position_c.z ,1.0f);
             if(!cameraTreeColision(tree, camera_position_c_aux) && !hasPointPlaneCollision(camera_position_c_aux, glm::vec4(20.0f,-5.0f,0.0f, 1.0f))){
                 camera_position_c.x -= (crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)))).x * percent/10;
-                if(percent > 1){
+                if(percent > 0.5){
                     left_mov = false;
                 }
             }
@@ -834,7 +824,7 @@ void createBullet(){
         {   
             tiro[j].na_tela=true;
             tiro[j].pos_x = camera_view_vector.x + camera_position_c.x;
-            tiro[j].pos_y = camera_view_vector.y + camera_position_c.y;
+            tiro[j].pos_y = 10*camera_view_vector.y + camera_position_c.y;
             tiro[j].pos_z = -camera_view_vector.z + camera_position_c.z;
             tiro[j].velocidade = 0.1f;
             break;
