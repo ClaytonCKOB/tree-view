@@ -415,7 +415,6 @@ int main()
         z_view = -1 *cos(g_CameraPhi)*cos(g_CameraTheta);
         x_view = cos(g_CameraPhi)*sin(g_CameraTheta);
 
-        cout << y_view << endl;
         // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
         // Veja slides 195-227 e 229-234 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
         camera_view_vector = glm::vec4(x_view,y_view,z_view,0.0f); // Vetor "view", sentido para onde a câmera está virada
@@ -455,7 +454,6 @@ int main()
             // right_mov = false;
             percent = glfwGetTime() - currTime;
             glm::vec4 camera_position_c_aux = glm::vec4(camera_position_c.x + (crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)))).x * percent/10,camera_position_c.y,camera_position_c.z ,1.0f);
-            cout << hasPointPlaneCollision(camera_position_c_aux, glm::vec4(20.0f,-5.0f,0.0f, 1.0f)) << endl;
             if(!cameraTreeColision(tree, camera_position_c_aux) && !hasPointPlaneCollision(camera_position_c_aux, glm::vec4(20.0f,-5.0f,0.0f, 1.0f))){
                 camera_position_c.x += (crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector))/norm(crossproduct(camera_up_vector, -camera_view_vector/norm(camera_view_vector)))).x * percent/10;
                 if(percent > 0.5){

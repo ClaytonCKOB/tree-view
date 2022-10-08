@@ -6,7 +6,6 @@ pNodoA* InsereArvore(pNodoA *a, int ch)
      if (a == NULL)
      {
          a =  (pNodoA*) malloc(sizeof(pNodoA));
-         cout << ch << endl;
          a->info = ch;
          a->esq = NULL;
          a->dir = NULL;
